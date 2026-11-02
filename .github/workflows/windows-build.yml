@@ -1,0 +1,59 @@
+name: Build Windows installer (x64)
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Compile AIMP Karaoke Studio x64
+    runs-on: windows-2022
+    timeout-minutes: 35
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Fetch AIMP 5.40 SDK reference headers
+        shell: pwsh
+        run: git clone --depth 1 https://github.com/Exle/aimp-sdk.git "$env:GITHUB_WORKSPACE\aimp-sdk"
+
+      - name: Verify WPF and LRC engine tests
+        shell: pwsh
+        run: |
+          dotnet run --project tests/LrcReaderTests/LrcReaderTests.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { throw 'Managed tests failed' }
+          cmake -S tests -B build/parser -G "Visual Studio 17 2022" -A x64
+          if ($LASTEXITCODE -ne 0) { throw 'Test configuration failed' }
+          cmake --build build/parser --config Release
+          if ($LASTEXITCODE -ne 0) { throw 'Native test compilation failed' }
+          ctest --test-dir build/parser -C Release --output-on-failure
+          if ($LASTEXITCODE -ne 0) { throw 'Native tests failed' }
+
+      - name: Build and package x64 Windows plugin
+        shell: pwsh
+        run: |
+          ./build.ps1 -SdkDir "$env:GITHUB_WORKSPACE\aimp-sdk\Sources\Cpp" -Architecture x64
+          if ($LASTEXITCODE -ne 0) { throw 'Windows package build failed' }
+
+      - name: Verify installation archive and hash
+        shell: pwsh
+        run: |
+          python tests/verify_package.py dist/AimpKaraokeStudio-x64.aimppack x64
+          if ($LASTEXITCODE -ne 0) { throw 'Package layout validation failed' }
+          Get-FileHash dist/AimpKaraokeStudio-x64.aimppack -Algorithm SHA256 | Format-List
+
+      - name: Upload downloadable .aimppack
+        uses: actions/upload-artifact@v4
+        with:
+          name: AIMP-Karaoke-Studio-x64-installer
+          path: dist/AimpKaraokeStudio-x64.aimppack
+          if-no-files-found: error
+          retention-days: 30

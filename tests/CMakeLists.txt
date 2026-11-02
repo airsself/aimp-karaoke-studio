@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.18)
+project(KaraokeParserTest LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 20)
+add_executable(lrc_test lrc_test.cpp ../plugin/Lrc.cpp)
+enable_testing()
+add_test(NAME lrc_parsing COMMAND lrc_test)
