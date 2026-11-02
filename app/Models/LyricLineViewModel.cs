@@ -1,3 +1,4 @@
+using Brushes = System.Windows.Media.Brushes;
 using Brush = System.Windows.Media.Brush;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
