@@ -1,3 +1,6 @@
+using Brush = System.Windows.Media.Brush;
+using Application = System.Windows.Application;
+using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using KaraokeStudio.Models;
 using KaraokeStudio.Services;
 using Microsoft.Win32;
