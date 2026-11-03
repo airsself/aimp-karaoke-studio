@@ -164,6 +164,15 @@ try {
     $cond = [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::NameProperty, "Подключено к AIMP")
     $label = $rootUi.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)
     $report.uiAutomationConnectionFound = ($null -ne $label)
+    # An AIMP first-run dialog can suppress track metadata without crashing WPF;
+    # nevertheless WPF should remain responsive after lyrics are loaded.
+    Start-Sleep -Seconds 3
+    $renderer.Refresh()
+    $report.rendererAlive = -not $renderer.HasExited
+    if ($renderer.HasExited) {
+      $report.rendererExitCode = $renderer.ExitCode
+      throw "Renderer terminated after creating a top-level window, exit=$($renderer.ExitCode)"
+    }
   } catch {
     Write-Warning "UI Automation not accessible in CI runner: $_"
   }
