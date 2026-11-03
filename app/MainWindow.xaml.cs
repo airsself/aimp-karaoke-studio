@@ -619,6 +619,7 @@ public partial class MainWindow : Window
     {
         if (!_ready) return;
         TranslationHeader.Visibility = _translationEnabled ? Visibility.Visible : Visibility.Collapsed;
+        TranslationDivider.Visibility = _translationEnabled ? Visibility.Visible : Visibility.Collapsed;
         SyncIndicator.Visibility = _translationEnabled ? Visibility.Collapsed : Visibility.Visible;
         TranslationButton.Content = _translationEnabled ? "RU · Закрыть" : "RU · Перевод";
         TranslationButton.Background = _translationEnabled ? Solid("#3B3151") : Solid("#1D1B21");

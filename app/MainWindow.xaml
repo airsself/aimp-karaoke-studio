@@ -96,6 +96,9 @@
               </RadialGradientBrush>
             </Rectangle.Fill>
           </Rectangle>
+          <Border x:Name="TranslationDivider" Panel.ZIndex="3" Width="1"
+                  Background="#393341" HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                  IsHitTestVisible="False" Visibility="Collapsed"/>
           <!-- A single virtualized list contains both columns: wrapped translations
                cannot drift away from their original timestamped lyric line. -->
           <Grid x:Name="TranslationHeader" Panel.ZIndex="3" Visibility="Collapsed" IsHitTestVisible="False"
@@ -133,8 +136,7 @@
                           MouseLeftButtonUp="LyricLine_MouseLeftButtonUp" Tag="{Binding StartMs}" Cursor="Hand">
                     <DockPanel LastChildFill="True" HorizontalAlignment="Stretch">
                       <Border DockPanel.Dock="Right" Width="{Binding TranslationPaneWidth}"
-                              Visibility="{Binding TranslationVisibility}" Padding="19,0,9,0"
-                              BorderBrush="#393341" BorderThickness="1,0,0,0">
+                              Visibility="{Binding TranslationVisibility}" Padding="19,0,9,0">
                         <TextBlock Text="{Binding TranslationText, Mode=OneWay}" TextWrapping="Wrap"
                                    TextAlignment="Center" HorizontalAlignment="Stretch"
                                    VerticalAlignment="Center" MaxWidth="820"
