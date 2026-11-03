@@ -290,11 +290,9 @@ public partial class MainWindow : Window
                         _clock.SetPosition(Math.Max(0, message.PositionMs));
                         _lastUiTime = -1;
                     }
-                    if (message.Command == "toggle")
-                    {
-                        _clock.SetPlaying(message.State == 2);
-                        PlayButton.Content = message.State == 2 ? "Ⅱ" : "▶";
-                    }
+                    // Player state changes asynchronously in AIMP. A command
+                    // acknowledgement may contain the OLD state immediately
+                    // after Pause/Resume; only the "state" event updates Play.
                 }
                 break;
         }

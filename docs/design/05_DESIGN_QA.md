@@ -31,3 +31,7 @@ No HTML prototype is described as a screenshot of the native WPF application.
 ## v0.4.1 root-cause correction
 
 The original native IPC parser split messages at `\n` and retained the trailing `\r` written by Windows `StreamWriter.WriteLineAsync`. Because it compared commands for exact equality, **all transport commands were ignored** on standard CRLF frames. Added a portable CRLF/LF normalizing command decoder, strict seek validation, and 12 dedicated native parser cases; AIMP SDK main-thread scheduling and acknowledgements remain enabled.
+
+## 2026-11-03 transport integration evidence
+
+GitHub Actions run [41602104895](https://github.com/airsself/aimp-karaoke-studio/actions/runs/41602104895): on official AIMP 5.40.2727 x64, the native pipe command decoder accepted CRLF seek at 12,000 ms and the player reported exactly 12,000 ms. Pause changed the player state to 1 after the SDK event settled; resume changed it to 2. Immediate command acknowledgements may reflect the old asynchronous player state, so the WPF play button uses only authoritative AIMP state events. Transport test also checks CLR renderer process and UI Automation connection. The next/previous navigation was not tested with a two-item playlist.

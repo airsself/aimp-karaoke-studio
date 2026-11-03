@@ -36,6 +36,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Native test compilation failed' }
           ctest --test-dir build/parser -C Release --output-on-failure
           if ($LASTEXITCODE -ne 0) { throw 'Native tests failed' }
+          python tests/source_contract_checks.py
+          if ($LASTEXITCODE -ne 0) { throw 'Source contract checks failed' }
 
       - name: Build and package x64 Windows plugin
         shell: pwsh
