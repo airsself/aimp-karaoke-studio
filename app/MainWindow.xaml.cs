@@ -374,7 +374,7 @@ public partial class MainWindow : Window
             bool reading = _mode == "Reading";
             item.Visibility = reading || !_synced || (_mode == "Stage" ? active || next : dist <= 2)
                 ? Visibility.Visible : Visibility.Collapsed;
-            item.NextCueVisibility = next && !reading ? Visibility.Visible : Visibility.Collapsed;
+            item.NextCueVisibility = next ? Visibility.Visible : Visibility.Collapsed;
             item.HighlightForeground = sung;
             item.KaraokeFillEnabled = active && _settings.ShowProgress && _synced;
             if (active)
