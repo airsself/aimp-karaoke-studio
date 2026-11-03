@@ -11,6 +11,12 @@ $report = [ordered]@{
   playerStarted = $false
   pluginPipeConnected = $false
   karaokeWindowCreated = $false
+  rendererAlive = $false
+  rendererExitCode = $null
+  rendererPid = 0
+  rendererTitle = ""
+  demoAlive = $false
+  demoWindowCreated = $false
   uiAutomationConnectionFound = $false
   screenshotCaptured = $false
   pluginDllLoaded = $false
@@ -109,10 +115,48 @@ try {
   $p.Dispose()
   Start-Sleep -Milliseconds 700
   $renderer = Start-Process -FilePath $wpfExe -ArgumentList ("--pipe " + $pipeName) -PassThru
-  Start-Sleep -Seconds 5
-  $renderer.Refresh()
-  $report.karaokeWindowCreated = (-not $renderer.HasExited) -and $renderer.MainWindowHandle -ne [IntPtr]::Zero
-  if (-not $report.karaokeWindowCreated) { throw "WPF renderer did not create a top-level window in the CI session" }
+  $report.rendererPid = $renderer.Id
+  for($i=0;$i -lt 16;$i++){
+    Start-Sleep -Milliseconds 650
+    $renderer.Refresh()
+    if($renderer.HasExited -or $renderer.MainWindowHandle -ne [IntPtr]::Zero){break}
+  }
+  $report.rendererAlive = -not $renderer.HasExited
+  if($renderer.HasExited) { $report.rendererExitCode = $renderer.ExitCode }
+  $report.rendererTitle = $renderer.MainWindowTitle
+  $report.karaokeWindowCreated = $report.rendererAlive -and $renderer.MainWindowHandle -ne [IntPtr]::Zero
+
+  # Preserve exception diagnostics BEFORE aborting, including a separate --demo start.
+  $wpfLog = Join-Path $env:LOCALAPPDATA "AimpKaraokeStudio\karaoke.log"
+  if(Test-Path $wpfLog){Copy-Item $wpfLog (Join-Path $folder "karaoke.log") -Force}
+  try {
+    $events = @(Get-WinEvent -FilterHashtable @{LogName="Application";StartTime=(Get-Date).AddMinutes(-5)} -ErrorAction SilentlyContinue |
+      Where-Object { $_.Message -match "KaraokeStudio|\.NET Runtime|PresentationFramework" } |
+      Select-Object -First 8 TimeCreated,ProviderName,Message)
+    $events | Format-List | Out-String | Set-Content (Join-Path $folder "application-errors.txt")
+  } catch { Write-Warning "Event log unavailable: $_" }
+  try {
+    $screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+    $bmp = [System.Drawing.Bitmap]::new([Math]::Min($screen.Width,1920),[Math]::Min($screen.Height,1080))
+    $g = [System.Drawing.Graphics]::FromImage($bmp)
+    try {
+      $g.CopyFromScreen($screen.X,$screen.Y,0,0,$bmp.Size)
+      $bmp.Save((Join-Path $folder "renderer-startup.png"),[System.Drawing.Imaging.ImageFormat]::Png)
+    } finally { $g.Dispose();$bmp.Dispose() }
+  } catch { Write-Warning "Renderer screenshot unavailable: $_" }
+
+  if(-not $report.karaokeWindowCreated){
+    Write-Warning "Live renderer did not create top-level window; attempting standalone demo."
+    $demo = Start-Process -FilePath $wpfExe -ArgumentList "--demo" -PassThru
+    Start-Sleep -Seconds 5
+    $demo.Refresh()
+    $report.demoAlive = -not $demo.HasExited
+    $report.demoWindowCreated = $report.demoAlive -and $demo.MainWindowHandle -ne [IntPtr]::Zero
+    Write-Host "Demo alive=$($report.demoAlive), window=$($report.demoWindowCreated), exit=$(if($demo.HasExited){$demo.ExitCode}else{'running'})"
+    if(-not $demo.HasExited){Stop-Process -Id $demo.Id -Force -ErrorAction SilentlyContinue}
+    if(Test-Path $wpfLog){Copy-Item $wpfLog (Join-Path $folder "karaoke.log") -Force}
+    throw "WPF renderer did not create top-level window, alive=$($report.rendererAlive), exit=$($report.rendererExitCode), demo=$($report.demoWindowCreated)"
+  }
   try {
     Add-Type -AssemblyName UIAutomationClient
     Add-Type -AssemblyName UIAutomationTypes
