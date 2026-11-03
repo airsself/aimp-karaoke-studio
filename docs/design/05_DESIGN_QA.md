@@ -27,3 +27,7 @@ No HTML prototype is described as a screenshot of the native WPF application.
 - Player command transport marshalled through AIMP's official main-thread service, no dependency on an arbitrary HWND message loop.
 - IPC command acknowledgement with state and position values. Seek click coordinate and keyboard arrows supported.
 - CI smoke test will send seek and pause/resume through the real AIMP pipe, then inspect command results and actual player position.
+
+## v0.4.1 root-cause correction
+
+The original native IPC parser split messages at `\n` and retained the trailing `\r` written by Windows `StreamWriter.WriteLineAsync`. Because it compared commands for exact equality, **all transport commands were ignored** on standard CRLF frames. Added a portable CRLF/LF normalizing command decoder, strict seek validation, and 12 dedicated native parser cases; AIMP SDK main-thread scheduling and acknowledgements remain enabled.

@@ -1,4 +1,5 @@
 #include "PipeServer.h"
+#include "CommandProtocol.h"
 #include <algorithm>
 #include <cstdlib>
 #include <chrono>
@@ -109,19 +110,17 @@ bool PipeServer::ReadCommands(HANDLE pipe,std::string& buffer){
 void PipeServer::QueueCommand(WPARAM command,LPARAM argument){
     if(dispatchCommand_)dispatchCommand_(command,argument);
 }
-void PipeServer::ParseCommand(const std::string& s){
-    if(s=="{\"command\":\"toggle\"}")QueueCommand(KAR_CMD_TOGGLE,0);
-    else if(s=="{\"command\":\"next\"}")QueueCommand(KAR_CMD_NEXT,0);
-    else if(s=="{\"command\":\"previous\"}")QueueCommand(KAR_CMD_PREVIOUS,0);
-    else {
-        const std::string prefix="{\"command\":\"seek\",\"positionMs\":";
-        if(s.rfind(prefix,0)!=0||s.back()!='}')return;
-        std::string ms=s.substr(prefix.size(),s.size()-prefix.size()-1);
-        if(ms.empty()||ms.size()>9||!std::all_of(ms.begin(),ms.end(),[](char c){return c>='0'&&c<='9';}))return;
-        const long v=std::strtol(ms.c_str(),nullptr,10);
-        if(v>=0&&v<=24*60*60*1000)QueueCommand(KAR_CMD_SEEK_MS,static_cast<LPARAM>(v));
+void PipeServer::ParseCommand(const std::string& input){
+    const auto frame=DecodeKaraokeCommand(input);
+    switch(frame.kind) {
+        case KaraokeCommand::Toggle:QueueCommand(KAR_CMD_TOGGLE,0);break;
+        case KaraokeCommand::Next:QueueCommand(KAR_CMD_NEXT,0);break;
+        case KaraokeCommand::Previous:QueueCommand(KAR_CMD_PREVIOUS,0);break;
+        case KaraokeCommand::SeekMs:QueueCommand(KAR_CMD_SEEK_MS,static_cast<LPARAM>(frame.positionMs));break;
+        default:break;
     }
 }
+
 void PipeServer::Run(){
     const auto full=L"\\\\.\\pipe\\"+name_;
     while(WaitForSingleObject(stop_,0)!=WAIT_OBJECT_0){

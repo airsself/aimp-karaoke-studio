@@ -4,3 +4,6 @@ set(CMAKE_CXX_STANDARD 20)
 add_executable(lrc_test lrc_test.cpp ../plugin/Lrc.cpp)
 enable_testing()
 add_test(NAME lrc_parsing COMMAND lrc_test)
+
+add_executable(command_protocol_test command_protocol_test.cpp)
+add_test(NAME transport_command_protocol COMMAND command_protocol_test)

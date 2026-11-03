@@ -31,6 +31,7 @@ checks={
 'only active phrase grows': 'item.FontSize = _settings.FontSize * 0.70;' in ui,
 'next phrase label removed': 'СЛЕДУЮЩАЯ СТРОКА' not in xaml,
 'player command acknowledgement': 'commandResult' in plugin,
+'handles Windows CRLF command frames': 'DecodeKaraokeCommand' in pipe and (r/'plugin/CommandProtocol.h').exists(),
 'seek uses click coordinate': 'e.GetPosition(SeekSlider)' in ui,
 }
 for k,v in checks.items():
