@@ -390,7 +390,6 @@ public partial class MainWindow : Window
         int count = _lines.Count;
         var r = Application.Current.Resources;
         Brush sung = (Brush)r["LyricsSungBrush"], activeColor = (Brush)r["LyricsActiveBrush"];
-        Brush nextColor = (Brush)r["LyricsNextBrush"], near = (Brush)r["LyricsNearBrush"];
         Brush far = (Brush)r["LyricsFarBrush"];
         IEnumerable<int> affected = previous == -2 ? Enumerable.Range(0, count) :
             Enumerable.Range(Math.Max(0, previous - 3), Math.Min(count, Math.Max(0, previous + 4)) - Math.Max(0, previous - 3))
@@ -401,40 +400,34 @@ public partial class MainWindow : Window
             int dist = Math.Abs(i - focus);
             bool active = _synced && i == _currentIndex;
             bool next = _synced && i == focus + 1;
-            bool previousLine = _synced && i == focus - 1;
             bool reading = _mode == "Reading";
             item.Visibility = reading || !_synced || (_mode == "Stage" ? active || next : dist <= 2)
                 ? Visibility.Visible : Visibility.Collapsed;
-            item.NextCueVisibility = next ? Visibility.Visible : Visibility.Collapsed;
+            // Only the current phrase receives a larger font and accent color.
+            // Every non-current phrase has the same size, weight and palette,
+            // regardless of whether it is previous, next or farther away.
+            item.NextCueVisibility = Visibility.Collapsed;
             item.HighlightForeground = sung;
-            item.KaraokeFillEnabled = active && _settings.ShowProgress && _synced;
+            item.KaraokeFillEnabled = active && _settings.ShowProgress;
             if (active)
             {
-                item.Foreground = activeColor; item.Opacity = 1;
-                item.FontSize = _settings.FontSize * (_mode == "Stage" ? 1.18 : 1.08);
+                item.Foreground = activeColor;
+                item.Opacity = 1.0;
+                item.FontSize = _settings.FontSize * (_mode == "Stage" ? 1.18 : 1.10);
                 item.Weight = FontWeights.SemiBold;
-            }
-            else if (next)
-            {
-                item.Foreground = nextColor; item.Opacity = 1;
-                item.FontSize = _settings.FontSize * (_mode == "Stage" ? 0.82 : 0.84);
-                item.Weight = FontWeights.Medium;
-            }
-            else if (previousLine)
-            {
-                item.Foreground = near; item.Opacity = reading ? 0.98 : 0.75;
-                item.FontSize = _settings.FontSize * 0.69; item.Weight = FontWeights.Normal;
             }
             else
             {
-                item.Foreground = far; item.Opacity = reading ? 0.95 : 0.48;
-                item.FontSize = _settings.FontSize * 0.65; item.Weight = FontWeights.Normal;
+                item.Foreground = far;
+                item.Opacity = _mode == "Stage" ? 0.74 : 0.84;
+                item.FontSize = _settings.FontSize * 0.70;
+                item.Weight = FontWeights.Normal;
+                item.KaraokeFillEnabled = false;
             }
             if (!_synced)
             {
-                item.Foreground = activeColor; item.Opacity = 0.98;
-                item.FontSize = _settings.FontSize * _settings.PlainTextScale;
-                item.Weight = FontWeights.Normal; item.KaraokeFillEnabled = false;
+                item.FontSize = _settings.FontSize * 0.70 * _settings.PlainTextScale;
+                item.Opacity = 0.84;
             }
             item.LineHeight = Math.Max(item.FontSize * 1.14, item.FontSize * _settings.LineSpacing);
             item.Padding = new Thickness(8, _settings.VerseGap * 0.6, 8, _settings.VerseGap * 0.6);
@@ -755,7 +748,22 @@ public partial class MainWindow : Window
     }
     private void SeekSlider_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        if (_durationMs > 0) SeekTo((int)Math.Round(SeekSlider.Value / 1000 * _durationMs));
+        if (_durationMs <= 0) return;
+        // PreviewMouseLeftButtonUp fires before the Slider template updates
+        // its value, so using SeekSlider.Value here can seek to the OLD point.
+        // The release coordinate is valid for both track clicks and thumb drags.
+        var point = e.GetPosition(SeekSlider);
+        double width = Math.Max(1, SeekSlider.ActualWidth - 12);
+        double fraction = Math.Clamp((point.X - 6) / width, 0, 1);
+        int requestedMs = (int)Math.Round(fraction * _durationMs);
+        SeekSlider.Value = fraction * 1000;
+        SeekTo(requestedMs);
+    }
+
+    private void SeekSlider_PreviewKeyUp(object sender, KeyEventArgs e)
+    {
+        if (_durationMs > 0 && e.Key is Key.Left or Key.Right or Key.Home or Key.End or Key.PageUp or Key.PageDown)
+            SeekTo((int)Math.Round(SeekSlider.Value / 1000 * _durationMs));
     }
     private void LyricLine_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {

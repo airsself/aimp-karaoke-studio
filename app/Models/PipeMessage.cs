@@ -14,6 +14,7 @@ public sealed class PipeMessage
     public string Source { get; set; } = "";
     public string Error { get; set; } = "";
     public bool Ok { get; set; }
+    public long Result { get; set; }
     public string Command { get; set; } = "";
     public string ArtworkPath { get; set; } = "";
     public string ArtworkData { get; set; } = "";
