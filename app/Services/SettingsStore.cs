@@ -5,14 +5,14 @@ namespace KaraokeStudio.Services;
 
 public sealed class StudioSettings
 {
-    public int SchemaVersion { get; set; } = 2;
-    public double FontSize { get; set; } = 42;
-    public double LineSpacing { get; set; } = 1.48;
-    public double VerseGap { get; set; } = 14;
+    public int SchemaVersion { get; set; } = 3;
+    public double FontSize { get; set; } = 48;
+    public double LineSpacing { get; set; } = 1.36;
+    public double VerseGap { get; set; } = 18;
     public double PlainTextScale { get; set; } = 1.0;
-    public double NeighborContrast { get; set; } = 43;
+    public double NeighborContrast { get; set; } = 64;
     public string AccentColor { get; set; } = "#8A7BB7";
-    public double AmbientPercent { get; set; } = 10;
+    public double AmbientPercent { get; set; } = 8;
     public bool SmoothScroll { get; set; } = true;
     public bool ShowProgress { get; set; } = true;
     public string Mode { get; set; } = "Reading";
@@ -34,7 +34,19 @@ public static class SettingsStore
         try
         {
             if (File.Exists(Pathname))
-                return JsonSerializer.Deserialize<StudioSettings>(File.ReadAllText(Pathname)) ?? new();
+                {
+                    var existing = JsonSerializer.Deserialize<StudioSettings>(File.ReadAllText(Pathname)) ?? new();
+                    if (existing.SchemaVersion < 3)
+                    {
+                        // Migrate only untouched defaults; preserve deliberate user choices.
+                        if (Math.Abs(existing.FontSize - 42) < 0.1) existing.FontSize = 48;
+                        if (Math.Abs(existing.LineSpacing - 1.48) < 0.01) existing.LineSpacing = 1.36;
+                        if (Math.Abs(existing.VerseGap - 14) < 0.1) existing.VerseGap = 18;
+                        if (Math.Abs(existing.NeighborContrast - 43) < 0.1) existing.NeighborContrast = 64;
+                        existing.SchemaVersion = 3;
+                    }
+                    return existing;
+                }
         }
         catch (Exception) { /* Damaged or outdated settings must not prevent launch. */ }
         return new();

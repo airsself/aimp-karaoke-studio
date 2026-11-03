@@ -3,18 +3,25 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Application.Resources>
     <!-- AIMP 5.40-inspired palette from the approved design v1 -->
-    <SolidColorBrush x:Key="WindowBrush" Color="#111112"/>
-    <SolidColorBrush x:Key="StageBrush" Color="#101011"/>
-    <SolidColorBrush x:Key="ChromeBrush" Color="#161618"/>
-    <SolidColorBrush x:Key="ToolbarBrush" Color="#151516"/>
-    <SolidColorBrush x:Key="DrawerBrush" Color="#18181A"/>
-    <SolidColorBrush x:Key="StrokeBrush" Color="#29292C"/>
-    <SolidColorBrush x:Key="TextBrush" Color="#E9E8ED"/>
-    <SolidColorBrush x:Key="SecondaryBrush" Color="#98979F"/>
-    <SolidColorBrush x:Key="DimBrush" Color="#77757F"/>
+    <SolidColorBrush x:Key="WindowBrush" Color="#101113"/>
+    <SolidColorBrush x:Key="StageBrush" Color="#0D0E11"/>
+    <SolidColorBrush x:Key="ChromeBrush" Color="#15161A"/>
+    <SolidColorBrush x:Key="ToolbarBrush" Color="#14151A"/>
+    <SolidColorBrush x:Key="DrawerBrush" Color="#17181D"/>
+    <SolidColorBrush x:Key="StrokeBrush" Color="#2A2C34"/>
+    <SolidColorBrush x:Key="TextBrush" Color="#ECEAF2"/>
+    <SolidColorBrush x:Key="SecondaryBrush" Color="#A5A1B1"/>
+    <SolidColorBrush x:Key="DimBrush" Color="#827D90"/>
     <SolidColorBrush x:Key="AccentBrush" Color="#8A7BB7"/>
-    <SolidColorBrush x:Key="HighlightBrush" Color="#AC9ADC"/>
+    <SolidColorBrush x:Key="HighlightBrush" Color="#D8CCFF"/>
 
+    <!-- Vocal Focus semantic lyrics palette. -->
+    <SolidColorBrush x:Key="LyricsSungBrush" Color="#F3EEFF"/>
+    <SolidColorBrush x:Key="LyricsActiveBrush" Color="#CFC2ED"/>
+    <SolidColorBrush x:Key="LyricsNextBrush" Color="#DDD1F5"/>
+    <SolidColorBrush x:Key="LyricsNearBrush" Color="#B5ADC6"/>
+    <SolidColorBrush x:Key="LyricsFarBrush" Color="#9994A8"/>
+    <SolidColorBrush x:Key="FocusRingBrush" Color="#D5C8FC"/>
     <Style x:Key="ChromeButton" TargetType="Button">
       <Setter Property="Background" Value="Transparent"/>
       <Setter Property="Foreground" Value="#A6A3AE"/>
@@ -24,7 +31,7 @@
       <Setter Property="FontFamily" Value="Segoe UI"/>
       <Setter Property="FontSize" Value="11"/>
       <Setter Property="Cursor" Value="Hand"/>
-      <Setter Property="Focusable" Value="False"/>
+      <Setter Property="Focusable" Value="True"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
@@ -40,6 +47,10 @@
               </Trigger>
               <Trigger Property="IsPressed" Value="True">
                 <Setter TargetName="Frame" Property="Background" Value="#393145"/>
+              </Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter TargetName="Frame" Property="BorderBrush" Value="{StaticResource FocusRingBrush}"/>
+                <Setter TargetName="Frame" Property="BorderThickness" Value="2"/>
               </Trigger>
               <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.35"/></Trigger>
             </ControlTemplate.Triggers>

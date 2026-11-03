@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0 — Vocal Focus / Precision Karaoke (2026-11-03)
+
+- Implement B (Vocal Focus): compact toolbar, dark violet focus background, stronger active and next lyric hierarchy, anchor compensation for beginning/end of lyrics.
+- Remove the thin line progress bar. Replace it with two-color, inline, left-to-right karaoke highlighting.
+- Parse Enhanced LRC word timings in native C++ and managed C#; retain ordinary-LRC approximate fallback.
+- Keep per-word timestamps in IPC while preserving the existing generation-based track/position protocol.
+- Improve keyboard focus cues, responsive settings overlay, settings migration and tests.
+- docs/design/05_DESIGN_QA.md tracks what CI confirms and what requires interactive AIMP testing.
+
 ## 0.3.0 — audit remediation candidate (2026-10-28)
 
 - Correct AIMP x64 package layout and add package validator.

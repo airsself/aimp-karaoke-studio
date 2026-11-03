@@ -22,6 +22,12 @@ checks={
 'album service': 'IAIMPServiceAlbumArt' in plugin and 'OnAimpArtwork' in plugin,
 'package 64-bit layout': "Join-Path $targetFolder 'x64'" in build,
 'per instance mutex': 'new Mutex(true' in (r/'app/App.xaml.cs').read_text(),
+'enhanced lrc parser': 'ParseEnhancedLine' in (r/'plugin/Lrc.cpp').read_text(),
+'precision ipc word payload': 'words' in plugin,
+'inline karaoke two run': 'HighlightedText' in xaml and 'RemainingText' in xaml,
+'no lyric progress bar': 'LyricProgress' not in xaml,
+'vocal focus anchor': 'UpdateViewportPadding' in ui,
+'precision highlight engine': (r/'app/Services/KaraokeHighlightEngine.cs').exists(),
 }
 for k,v in checks.items():
     if not v: raise AssertionError(k)

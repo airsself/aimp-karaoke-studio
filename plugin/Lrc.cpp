@@ -36,25 +36,82 @@ bool Timestamp(const std::wstring& tag, int& ms) {
     ms=(m*60+sec)*1000+sub;
     return true;
 }
+// Enhanced LRC timestamps are absolute song positions. Offset applies to all of them.
 void Normalize(ParsedLyrics& data,int offset) {
-    for(auto& line:data.lines)line.startMs=static_cast<int>(std::clamp(static_cast<long long>(line.startMs)+offset,0LL,86400000LL));
+    for(auto& line:data.lines){
+        line.startMs=static_cast<int>(std::clamp(static_cast<long long>(line.startMs)+offset,0LL,86400000LL));
+        for(auto& word:line.words){
+            word.startMs=static_cast<int>(std::clamp(static_cast<long long>(word.startMs)+offset,0LL,86400000LL));
+            if(word.endMs>0)word.endMs=static_cast<int>(std::clamp(static_cast<long long>(word.endMs)+offset,0LL,86400000LL));
+        }
+    }
     std::stable_sort(data.lines.begin(),data.lines.end(),[](const auto& a,const auto& b){return a.startMs<b.startMs;});
-    // Multiple source rows at the same timestamp are a bilingual/multi-voice phrase,
-    // not independent lines with a zero-duration first entry.
     std::vector<LyricLine> merged;
     for(const auto& line:data.lines){
         if(!merged.empty() && merged.back().startMs==line.startMs){
-            if(!line.text.empty()) {
+            if(!line.text.empty()){
                 if(!merged.back().text.empty())merged.back().text+=L"\n";
                 merged.back().text+=line.text;
             }
-        }else merged.push_back(line);
+            // Two simultaneous vocal parts have no unambiguous per-word alignment.
+            merged.back().words.clear();
+        } else merged.push_back(line);
     }
     data.lines.swap(merged);
     for(size_t i=0;i<data.lines.size();++i){
-        const int end=i+1<data.lines.size()?data.lines[i+1].startMs:data.lines[i].startMs+4000;
-        data.lines[i].endMs=std::max(data.lines[i].startMs+1,end);
+        auto& line=data.lines[i];
+        const int end=i+1<data.lines.size()?data.lines[i+1].startMs:line.startMs+4000;
+        line.endMs=std::max(line.startMs+1,end);
+        for(size_t j=0;j<line.words.size();++j){
+            auto& word=line.words[j];
+            word.startMs=std::clamp(word.startMs,line.startMs,line.endMs);
+            const int next=j+1<line.words.size()?line.words[j+1].startMs:line.endMs;
+            word.endMs=std::clamp(word.endMs>word.startMs?word.endMs:next,word.startMs+1,std::max(word.startMs+1,line.endMs));
+        }
     }
+}
+// Parse <mm:ss.xx>word segments; do not manufacture word timings for plain LRC.
+LyricLine ParseEnhancedLine(int startMs,const std::wstring& body){
+    LyricLine result;result.startMs=startMs;
+    std::wstring plain;size_t p=0;int current=-1;std::wstring prefix;
+    bool sawTag=false;
+    while(p<body.size()){
+        if(body[p]!=L'<'){prefix.push_back(body[p++]);continue;}
+        const size_t end=body.find(L'>',p+1);
+        int stamp=0;
+        if(end==std::wstring::npos||!Timestamp(body.substr(p+1,end-p-1),stamp)){
+            prefix.push_back(body[p++]);continue;
+        }
+        sawTag=true;
+        if(current>=0 && !prefix.empty()){
+            result.words.push_back({current,stamp,prefix});
+        } else if(current<0 && !Trim(prefix).empty()){
+            // The prefix has no timestamp: preserve content, drop precision.
+            result.words.clear();
+            sawTag=false;
+        }
+        plain+=prefix;prefix.clear();
+        current=stamp;p=end+1;
+    }
+    if(current>=0 && !prefix.empty())result.words.push_back({current,0,prefix});
+    if(current>=0 && prefix.empty()&&!result.words.empty())
+        result.words.back().endMs=current; // optional closing tag
+    plain+=prefix;
+    result.text=Trim(plain);
+    if(sawTag && !result.words.empty()){
+        // Trim only the boundaries; keep spaces between words verbatim.
+        auto& first=result.words.front().text;
+        first.erase(0,first.find_first_not_of(L" \t"));
+        auto& last=result.words.back().text;
+        const auto lastNonSpace=last.find_last_not_of(L" \t");
+        if(lastNonSpace!=std::wstring::npos)last.erase(lastNonSpace+1);
+        if(result.words.size()>256||result.words.front().startMs<startMs)
+            result.words.clear();
+        std::wstring rebuilt;
+        for(const auto& w:result.words)rebuilt+=w.text;
+        if(rebuilt!=result.text)result.words.clear();
+    } else result.words.clear();
+    return result;
 }
 }
 ParsedLyrics ParseLrc(const std::wstring& raw){
@@ -74,8 +131,7 @@ ParsedLyrics ParseLrc(const std::wstring& raw){
             times.push_back(time);p=end+1;
         }
         if(!times.empty()){
-            const auto content=Trim(row.substr(p));
-            for(int t:times)out.lines.push_back({t,0,content});
+            for(int t:times)out.lines.push_back(ParseEnhancedLine(t,Trim(row.substr(p))));
             out.synced=true;
         }else if(row[0]!=L'[')plain.push_back(row);
     }

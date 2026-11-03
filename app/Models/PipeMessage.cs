@@ -17,9 +17,16 @@ public sealed class PipeMessage
     public string ArtworkData { get; set; } = "";
     public List<LyricsDto> Lines { get; set; } = [];
 }
+public sealed class WordTimingDto
+{
+    public int StartMs { get; set; }
+    public int EndMs { get; set; }
+    public string Text { get; set; } = "";
+}
 public sealed class LyricsDto
 {
     public int StartMs { get; set; }
     public int EndMs { get; set; }
     public string Text { get; set; } = "";
+    public List<WordTimingDto> Words { get; set; } = [];
 }

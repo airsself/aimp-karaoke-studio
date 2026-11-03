@@ -1,6 +1,7 @@
 using Brushes = System.Windows.Media.Brushes;
 using Brush = System.Windows.Media.Brush;
 using System.ComponentModel;
+using KaraokeStudio.Services;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media;
@@ -11,7 +12,26 @@ public sealed class LyricLineViewModel : INotifyPropertyChanged
 {
     public int StartMs { get; init; }
     public int EndMs { get; init; }
-    public string Text { get; init; } = "";
+    private string _text = "";
+    public string Text
+    {
+        get => _text;
+        init { _text = value ?? ""; _remainingText = _text; }
+    }
+    public IReadOnlyList<WordTimingDto> Words { get; init; } = [];
+
+    private Brush _highlightForeground = Brushes.White;
+    public Brush HighlightForeground { get => _highlightForeground; set { if (_highlightForeground != value) { _highlightForeground = value; Changed(); } } }
+    private string _highlightedText = "";
+    public string HighlightedText { get => _highlightedText; private set { if (_highlightedText != value) { _highlightedText = value; Changed(); } } }
+    private string _remainingText = "";
+    public string RemainingText { get => _remainingText; private set { if (_remainingText != value) { _remainingText = value; Changed(); } } }
+    private bool _karaokeFillEnabled;
+    public bool KaraokeFillEnabled { get => _karaokeFillEnabled; set { if (_karaokeFillEnabled != value) { _karaokeFillEnabled = value; Changed(); UpdateKaraokeSlices(); } } }
+    private Visibility _nextCueVisibility = Visibility.Collapsed;
+    public Visibility NextCueVisibility { get => _nextCueVisibility; set { if (_nextCueVisibility != value) { _nextCueVisibility = value; Changed(); } } }
+    public bool HasPrecision => Words.Count > 0;
+
 
     private Brush _foreground = Brushes.Gray;
     public Brush Foreground { get => _foreground; set { if (_foreground != value) { _foreground = value; Changed(); } } }
@@ -26,12 +46,25 @@ public sealed class LyricLineViewModel : INotifyPropertyChanged
     private Visibility _progressVisibility = Visibility.Collapsed;
     public Visibility ProgressVisibility { get => _progressVisibility; set { if (_progressVisibility != value) { _progressVisibility = value; Changed(); } } }
     private double _progress;
-    public double Progress { get => _progress; set { if (Math.Abs(_progress-value)>0.1) { _progress = value; Changed(); } } }
+    public double Progress { get => _progress; set { if (Math.Abs(_progress-value)>0.1) { _progress = value; Changed(); UpdateKaraokeSlices(); } } }
     private Thickness _padding = new(8,12,8,12);
     public Thickness Padding { get => _padding; set { if (_padding != value) { _padding = value; Changed(); } } }
     private double _lineHeight = 60;
     public double LineHeight { get => _lineHeight; set { if (Math.Abs(_lineHeight-value)>0.05) { _lineHeight=value; Changed(); } } }
 
+    // Two runs avoid reflow when the color boundary changes.
+    private void UpdateKaraokeSlices()
+    {
+        if (!KaraokeFillEnabled || Text.Length == 0)
+        {
+            HighlightedText = "";
+            RemainingText = Text;
+            return;
+        }
+        int cut = KaraokeHighlightEngine.GetHighlightLength(Text, Words, StartMs, EndMs, Progress);
+        HighlightedText = Text[..cut];
+        RemainingText = Text[cut..];
+    }
 
     public event PropertyChangedEventHandler? PropertyChanged;
     private void Changed([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));

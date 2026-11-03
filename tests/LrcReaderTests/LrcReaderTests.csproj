@@ -8,5 +8,6 @@
   <ItemGroup>
     <Compile Include="../../app/Services/LrcReader.cs" Link="LrcReader.cs" />
     <Compile Include="../../app/Models/PipeMessage.cs" Link="PipeMessage.cs" />
+    <Compile Include="../../app/Services/KaraokeHighlightEngine.cs" Link="KaraokeHighlightEngine.cs" />
   </ItemGroup>
 </Project>

@@ -41,6 +41,8 @@ public partial class MainWindow : Window
     private readonly bool _demo;
     private int _generation;
     private ScrollViewer? _scrollViewer;
+    private VirtualizingStackPanel? _lyricsPanel;
+    private double FocusAnchor => _mode == "Stage" ? 0.47 : _mode == "Karaoke" ? 0.44 : 0.46;
     private bool _followLyrics = true;
     private CancellationTokenSource? _artworkCancel;
     private bool _embeddedArtwork;
@@ -130,6 +132,7 @@ public partial class MainWindow : Window
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
         _scrollViewer = FindChild<ScrollViewer>(LyricsItems);
+        UpdateViewportPadding();
         if (_demo) StartDemo(); else _pipe?.Start();
         _frames.Start();
     }
@@ -274,17 +277,23 @@ public partial class MainWindow : Window
         ResumeFollowButton.Visibility = Visibility.Collapsed;
         foreach (var item in items.OrderBy(x => x.StartMs).Take(5000))
             _lines.Add(new LyricLineViewModel { StartMs = Math.Max(0, item.StartMs),
-                EndMs = Math.Max(0, item.EndMs), Text = item.Text ?? "" });
+                EndMs = Math.Max(0, item.EndMs), Text = item.Text ?? "", Words = item.Words ?? [] });
         _synced = synced && _lines.Count > 0;
         SourceText.Text = string.IsNullOrWhiteSpace(source) ? "AIMP Lyrics" : source.Replace('-', ' ');
         SyncIndicator.Text = _lines.Count == 0 ? "ТЕКСТ НЕ НАЙДЕН" :
-            (_synced ? "ПОСТРОЧНАЯ СИНХРОНИЗАЦИЯ" : "ТЕКСТ БЕЗ ВРЕМЕННЫХ МЕТОК");
+            !_synced ? "ТЕКСТ БЕЗ ВРЕМЕННЫХ МЕТОК" :
+            _lines.Any(l => l.HasPrecision) ? "ПОСЛОВНАЯ СИНХРОНИЗАЦИЯ · ENHANCED LRC" :
+            "ПОСТРОЧНЫЙ LRC · ПРИБЛИЖЁННАЯ ПОДСВЕТКА";
         EmptyPanel.Visibility = _lines.Count > 0 ? Visibility.Collapsed : Visibility.Visible;
         EmptyHeadline.Text = "Текст песни не найден";
         EmptyDescription.Text = "Откройте LRC кнопкой внизу или добавьте файл с тем же названием, что и аудиотрек.";
         _currentIndex = -2;
         ApplyLineStyles();
-        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(UpdateTargetScroll));
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        {
+            UpdateViewportPadding();
+            UpdateTargetScroll();
+        }));
     }
 
     private void Frame(object? sender, EventArgs e)
@@ -346,15 +355,12 @@ public partial class MainWindow : Window
     private void ApplyLineStyles(int previous = -2)
     {
         if (!_ready) return;
-        bool reading = _mode == "Reading";
         int focus = _currentIndex >= 0 ? _currentIndex : _lastScrollIndex;
         int count = _lines.Count;
-        int accentIndex = Array.FindIndex(Accents,
-            x => x.Equals(_settings.AccentColor, StringComparison.OrdinalIgnoreCase));
-        Brush activeText = Solid(Highlights[Math.Max(0, accentIndex)]);
-        double padding = _settings.VerseGap / 2;
-        // Playback updates affect only rows near the old/new focus.
-        // Setting/mode changes pass -2 and update the full collection.
+        var r = Application.Current.Resources;
+        Brush sung = (Brush)r["LyricsSungBrush"], activeColor = (Brush)r["LyricsActiveBrush"];
+        Brush nextColor = (Brush)r["LyricsNextBrush"], near = (Brush)r["LyricsNearBrush"];
+        Brush far = (Brush)r["LyricsFarBrush"];
         IEnumerable<int> affected = previous == -2 ? Enumerable.Range(0, count) :
             Enumerable.Range(Math.Max(0, previous - 3), Math.Min(count, Math.Max(0, previous + 4)) - Math.Max(0, previous - 3))
             .Concat(Enumerable.Range(Math.Max(0, _currentIndex - 3), Math.Min(count, Math.Max(0, _currentIndex + 4)) - Math.Max(0, _currentIndex - 3))).Distinct();
@@ -364,19 +370,44 @@ public partial class MainWindow : Window
             int dist = Math.Abs(i - focus);
             bool active = _synced && i == _currentIndex;
             bool next = _synced && i == focus + 1;
-            bool near = dist == 1;
-            // Preserve layout positions while hiding far-away rows in Karaoke/Stage.
-            bool visible = reading || !_synced || (_mode == "Stage" ? active || next : dist <= 2);
-            item.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-            item.Foreground = active ? activeText : near ? NearBrush : QuietBrush;
-            item.Opacity = active ? 1 : !_synced ? 0.9 :
-                near ? Math.Min(0.96, _settings.NeighborContrast / 100.0 * 1.8) :
-                i < focus ? Math.Max(0.15, _settings.NeighborContrast / 100.0 * 0.6) : _settings.NeighborContrast / 100.0;
-            item.FontSize = _settings.FontSize * (!_synced ? _settings.PlainTextScale : active ? (_mode == "Stage" ? 1.24 : 1.0) : 0.70);
-            item.LineHeight = Math.Max(item.FontSize * 1.1, item.FontSize * _settings.LineSpacing);
-            item.Weight = active ? FontWeights.SemiBold : FontWeights.Normal;
-            item.Padding = new Thickness(8, padding, 8, padding);
-            item.ProgressVisibility = active && _settings.ShowProgress ? Visibility.Visible : Visibility.Collapsed;
+            bool previousLine = _synced && i == focus - 1;
+            bool reading = _mode == "Reading";
+            item.Visibility = reading || !_synced || (_mode == "Stage" ? active || next : dist <= 2)
+                ? Visibility.Visible : Visibility.Collapsed;
+            item.NextCueVisibility = next && !reading ? Visibility.Visible : Visibility.Collapsed;
+            item.HighlightForeground = sung;
+            item.KaraokeFillEnabled = active && _settings.ShowProgress && _synced;
+            if (active)
+            {
+                item.Foreground = activeColor; item.Opacity = 1;
+                item.FontSize = _settings.FontSize * (_mode == "Stage" ? 1.18 : 1.08);
+                item.Weight = FontWeights.SemiBold;
+            }
+            else if (next)
+            {
+                item.Foreground = nextColor; item.Opacity = 1;
+                item.FontSize = _settings.FontSize * (_mode == "Stage" ? 0.82 : 0.84);
+                item.Weight = FontWeights.Medium;
+            }
+            else if (previousLine)
+            {
+                item.Foreground = near; item.Opacity = reading ? 0.98 : 0.75;
+                item.FontSize = _settings.FontSize * 0.69; item.Weight = FontWeights.Normal;
+            }
+            else
+            {
+                item.Foreground = far; item.Opacity = reading ? 0.95 : 0.48;
+                item.FontSize = _settings.FontSize * 0.65; item.Weight = FontWeights.Normal;
+            }
+            if (!_synced)
+            {
+                item.Foreground = activeColor; item.Opacity = 0.98;
+                item.FontSize = _settings.FontSize * _settings.PlainTextScale;
+                item.Weight = FontWeights.Normal; item.KaraokeFillEnabled = false;
+            }
+            item.LineHeight = Math.Max(item.FontSize * 1.14, item.FontSize * _settings.LineSpacing);
+            item.Padding = new Thickness(8, _settings.VerseGap * 0.6, 8, _settings.VerseGap * 0.6);
+            item.ProgressVisibility = Visibility.Collapsed; // no separate progress bar
             if (!active) item.Progress = 0;
         }
         UpdateModeButtons();
@@ -389,6 +420,41 @@ public partial class MainWindow : Window
         for (int i=0; i<VisualTreeHelper.GetChildrenCount(root); i++)
             if (FindChild<T>(VisualTreeHelper.GetChild(root,i)) is { } child) return child;
         return null;
+    }
+
+    private void UpdateViewportPadding()
+    {
+        if (_closing) return;
+        _scrollViewer ??= FindChild<ScrollViewer>(LyricsItems);
+        _lyricsPanel ??= FindChild<VirtualizingStackPanel>(LyricsItems);
+        if (_scrollViewer == null || _lyricsPanel == null || _scrollViewer.ViewportHeight <= 0) return;
+        double height = _scrollViewer.ViewportHeight;
+        var pad = new Thickness(0, Math.Max(24, height * FocusAnchor - _settings.FontSize * 0.6),
+                                0, Math.Max(24, height * (1 - FocusAnchor) - _settings.FontSize * 0.6));
+        if (_lyricsPanel.Margin != pad) _lyricsPanel.Margin = pad;
+    }
+
+    private void ApplyResponsiveSettingsLayout()
+    {
+        if (!_ready) return;
+        bool overlay = ActualWidth < 900;
+        if (_settingsOpen && overlay)
+        {
+            SettingsColumn.Width = new GridLength(0);
+            Grid.SetColumn(SettingsDrawer, 0);
+            Grid.SetColumnSpan(SettingsDrawer, 2);
+            SettingsDrawer.HorizontalAlignment = HorizontalAlignment.Right;
+            SettingsDrawer.Width = Math.Min(298, Math.Max(265, ActualWidth - 22));
+            Panel.SetZIndex(SettingsDrawer, 10);
+        }
+        else
+        {
+            Grid.SetColumn(SettingsDrawer, 1);
+            Grid.SetColumnSpan(SettingsDrawer, 1);
+            SettingsDrawer.HorizontalAlignment = HorizontalAlignment.Stretch;
+            SettingsDrawer.Width = double.NaN;
+            SettingsColumn.Width = _settingsOpen ? new GridLength(298) : new GridLength(0);
+        }
     }
 
     private void UpdateTargetScroll()
@@ -409,8 +475,8 @@ public partial class MainWindow : Window
         }
         try
         {
-            var top = container.TranslatePoint(new Point(0, 0), LyricsItems);
-            var target = _scrollViewer.VerticalOffset + top.Y + container.ActualHeight/2 - _scrollViewer.ViewportHeight*0.46;
+            var top = container.TranslatePoint(new Point(0, 0), _scrollViewer);
+            var target = _scrollViewer.VerticalOffset + top.Y + container.ActualHeight/2 - _scrollViewer.ViewportHeight*FocusAnchor;
             _targetScroll = Math.Clamp(target, 0, _scrollViewer.ScrollableHeight);
         }
         catch (InvalidOperationException) { }
@@ -421,8 +487,9 @@ public partial class MainWindow : Window
         if (!_ready) return;
         foreach (var (button, name) in new[] { (ReadingButton, "Reading"), (KaraokeButton, "Karaoke"), (StageButton, "Stage") })
         {
-            button.Background = _mode == name ? Solid("#4A415F") : Brushes.Transparent;
-            button.Foreground = _mode == name ? Solid("#EEE9FC") : Solid("#9C9AA5");
+            button.Background = _mode == name ? Solid("#3B3151") : Brushes.Transparent;
+            button.Foreground = _mode == name ? Solid("#F0EBFF") : Solid("#AAA5B7");
+            button.BorderBrush = _mode == name ? Solid("#695991") : Brushes.Transparent;
         }
     }
 
@@ -431,6 +498,7 @@ public partial class MainWindow : Window
         _mode = value;
         _settings.Mode = value;
         ApplyLineStyles();
+        UpdateViewportPadding();
     }
 
     private void UpdateSettingsValues()
@@ -509,8 +577,8 @@ public partial class MainWindow : Window
     {
         if (_fullscreen) return;
         _settingsOpen = show ?? !_settingsOpen;
-        SettingsColumn.Width = _settingsOpen ? new GridLength(298) : new GridLength(0);
         SettingsDrawer.Visibility = _settingsOpen ? Visibility.Visible : Visibility.Collapsed;
+        ApplyResponsiveSettingsLayout();
         SettingsButton.Background = _settingsOpen ? Solid("#342B44") : Solid("#1D1B21");
         Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(UpdateTargetScroll));
     }
@@ -542,7 +610,7 @@ public partial class MainWindow : Window
         else
         {
             _fullscreen = false;
-            HeaderRow.Height = new GridLength(38); ToolbarRow.Height = new GridLength(70); FooterRow.Height = new GridLength(64);
+            HeaderRow.Height = new GridLength(38); ToolbarRow.Height = new GridLength(62); FooterRow.Height = new GridLength(60);
             WindowState = WindowState.Normal;
             WindowStyle = _restoreStyle;
             ResizeMode = ResizeMode.CanResize;
@@ -561,6 +629,7 @@ public partial class MainWindow : Window
         FontSlider.Value = _settings.FontSize;
         UpdateSettingsValues();
         ApplyLineStyles();
+        UpdateViewportPadding();
     }
 
     private void AdjustOffset(int delta)
@@ -624,6 +693,7 @@ public partial class MainWindow : Window
         _settings.AmbientPercent = Math.Round(AmbienceSlider.Value);
         UpdateSettingsValues();
         ApplyLineStyles();
+        UpdateViewportPadding();
     }
     private void SettingCheck_Click(object sender, RoutedEventArgs e)
     {
@@ -662,7 +732,14 @@ public partial class MainWindow : Window
         SeekTo(line.StartMs);
     }
     private void ScrollArea_SizeChanged(object sender, SizeChangedEventArgs e) =>
-        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(UpdateTargetScroll));
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() => { UpdateViewportPadding(); UpdateTargetScroll(); }));
+
+    private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (!_ready) return;
+        ApplyResponsiveSettingsLayout();
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() => { UpdateViewportPadding(); UpdateTargetScroll(); }));
+    }
     private void LyricsItems_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
         if ((Keyboard.Modifiers & ModifierKeys.Control) != 0) return;

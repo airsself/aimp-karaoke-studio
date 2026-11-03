@@ -1,18 +1,22 @@
-# AIMP Karaoke Studio v0.3 — audit remediation candidate
+# AIMP Karaoke Studio v0.4 — Vocal Focus + Precision Karaoke
 
 An AIMP 5.40 C++ plugin and a separate WPF 10 Windows lyrics window, styled to match the original AIMP dark UI.
 
-## What works in source
+## Features
 
 - AIMP SDK `IAIMPServicePlayer` and `IAIMPServiceLyrics` integration, and local `.lrc` fallback.
 - PID-scoped UTF-8 Named Pipe, safe serialized messages, generation-based stale update filtering.
-- Three lyrics modes (Reading, Karaoke, Stage), virtualization, font scaling, smooth line scroll, full-screen, manual reading and live controls.
+- Three lyrics modes (Reading, Karaoke, Stage), **Vocal Focus** layout, virtualized lyric text, inline karaoke fill, font scaling, smooth line scroll, full-screen, manual reading and live controls.
 - Offline embedded album artwork via AIMP AlbumArt (for PNG/JPEG encoded image container data up to 450 kB), asynchronous local cover fallback.
 - Windows configuration persistence, parser tests, build/package scripts and diagnostic logs.
 
+## Word-timed karaoke
+
+Enhanced LRC supports `<mm:ss.xx>` word timestamps within `[mm:ss.xx]` lines. Exact timestamps are serialized to WPF and rendered with a left-to-right sung-color highlight. For ordinary LRC a clearly labeled **approximate** highlight is used. The old under-line progress bar has been removed. Example and limitations: `docs/design/PRECISION_KARAOKE.md`.
+
 ## Status
 
-**Source candidate — not yet compiled or tested inside AIMP on Windows.** See `docs/REMEDIATION_REPORT.md` for fixed items and validation risks. The user's original v0.2 source remains untouched.
+**Windows compilation and parser tests must be confirmed by the current GitHub Actions run. Real AIMP interactive testing has not been performed.** See `docs/REMEDIATION_REPORT.md` for fixed items and validation risks. The user's original v0.2 source remains untouched.
 
 ## Build on Windows
 

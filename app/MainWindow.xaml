@@ -6,7 +6,7 @@
         WindowStartupLocation="CenterScreen" WindowStyle="None" ResizeMode="CanResize"
         Background="{StaticResource WindowBrush}" Foreground="{StaticResource TextBrush}"
         FontFamily="Segoe UI" Loaded="Window_Loaded" Closing="Window_Closing"
-        KeyDown="Window_KeyDown" PreviewMouseWheel="Window_PreviewMouseWheel">
+        KeyDown="Window_KeyDown" PreviewMouseWheel="Window_PreviewMouseWheel" SizeChanged="Window_SizeChanged">
   <shell:WindowChrome.WindowChrome>
     <shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0"/>
   </shell:WindowChrome.WindowChrome>
@@ -14,9 +14,9 @@
     <Grid>
       <Grid.RowDefinitions>
         <RowDefinition x:Name="HeaderRow" Height="38"/>
-        <RowDefinition x:Name="ToolbarRow" Height="70"/>
+        <RowDefinition x:Name="ToolbarRow" Height="62"/>
         <RowDefinition Height="*"/>
-        <RowDefinition x:Name="FooterRow" Height="64"/>
+        <RowDefinition x:Name="FooterRow" Height="60"/>
       </Grid.RowDefinitions>
 
       <!-- AIMP-like titlebar; Windows resizing remains active via WindowChrome. -->
@@ -30,7 +30,7 @@
             <TextBlock Text="A" Foreground="#D7D2E3" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
           </Border>
           <TextBlock Grid.Column="1" Text="AIMP Karaoke Studio" Foreground="#CECDD2" FontSize="11" Margin="10,0,12,0" VerticalAlignment="Center"/>
-          <TextBlock Grid.Column="2" Text="LYRICS WINDOW" Foreground="#65636C" FontSize="10" VerticalAlignment="Center"/>
+          <TextBlock Grid.Column="2" Text="FOCUSED LYRICS" Foreground="#898493" FontSize="10" VerticalAlignment="Center"/>
           <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Stretch">
             <Button Content="−" ToolTip="Свернуть" Style="{StaticResource WindowControl}"
                     shell:WindowChrome.IsHitTestVisibleInChrome="True" Click="Minimize_Click"/>
@@ -43,7 +43,7 @@
       </Border>
 
       <!-- Track strip + display modes -->
-      <Border Grid.Row="1" Background="{StaticResource ToolbarBrush}" BorderBrush="#232326" BorderThickness="0,0,0,1">
+      <Border Grid.Row="1" Background="{StaticResource ToolbarBrush}" BorderBrush="{StaticResource StrokeBrush}" BorderThickness="0,0,0,1">
         <Grid Margin="18,0">
           <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
           <Grid Width="43" Height="43" Margin="0,0,12,0" VerticalAlignment="Center">
@@ -53,7 +53,7 @@
           </Grid>
           <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,15,0">
             <TextBlock x:Name="TrackTitle" Text="Ожидание AIMP" FontWeight="SemiBold" FontSize="15"
-                       Foreground="#EBEAF0" TextTrimming="CharacterEllipsis"/>
+                       Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis"/>
             <TextBlock x:Name="TrackArtist" Text="Откройте композицию в проигрывателе" Style="{StaticResource SmallText}" Margin="0,3,0,0"/>
             <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
               <Ellipse x:Name="StatusDot" Width="5" Height="5" Fill="#77757F" VerticalAlignment="Center" Margin="0,0,5,0"/>
@@ -62,8 +62,8 @@
               <TextBlock x:Name="SourceText" Text="Нет текста" Foreground="#777680" FontSize="10"/>
             </StackPanel>
           </StackPanel>
-          <Border Grid.Column="2" VerticalAlignment="Center" Margin="0,0,12,0" Background="#111113"
-                  BorderBrush="#2D2B32" BorderThickness="1" CornerRadius="4" Padding="3">
+          <Border Grid.Column="2" VerticalAlignment="Center" Margin="0,0,12,0" Background="#131217"
+                  BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" CornerRadius="4" Padding="3">
             <StackPanel Orientation="Horizontal">
               <Button x:Name="ReadingButton" Content="Чтение" Style="{StaticResource ModeButton}" Click="Reading_Click"/>
               <Button x:Name="KaraokeButton" Content="Караоке" Style="{StaticResource ModeButton}" Click="Karaoke_Click"/>
@@ -82,10 +82,20 @@
           <Image x:Name="AmbientImage" Stretch="UniformToFill" Opacity="0" IsHitTestVisible="False">
             <Image.Effect><BlurEffect Radius="72"/></Image.Effect>
           </Image>
-          <Rectangle Fill="#55101011" IsHitTestVisible="False"/>
-          <TextBlock x:Name="SyncIndicator" Text="ПОСТРОЧНАЯ СИНХРОНИЗАЦИЯ" Foreground="#6A6873" FontSize="10"
+          <Rectangle Fill="#C70D0E11" IsHitTestVisible="False"/>
+          <!-- Vocal Focus is a soft atmospheric focus, not a framed panel. -->
+          <Rectangle Panel.ZIndex="1" IsHitTestVisible="False" Opacity="0.46">
+            <Rectangle.Fill>
+              <RadialGradientBrush RadiusX="0.62" RadiusY="0.48" Center="0.5,0.43" GradientOrigin="0.5,0.43">
+                <GradientStop Color="#372940" Offset="0"/>
+                <GradientStop Color="#17131C" Offset="0.55"/>
+                <GradientStop Color="#101011" Offset="1"/>
+              </RadialGradientBrush>
+            </Rectangle.Fill>
+          </Rectangle>
+          <TextBlock x:Name="SyncIndicator" Text="ПОСТРОЧНАЯ СИНХРОНИЗАЦИЯ" Foreground="{DynamicResource SecondaryBrush}" FontSize="10"
                      HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,17,20,0" Panel.ZIndex="3"/>
-          <ListBox x:Name="LyricsItems" Panel.ZIndex="2" Margin="10,0" Background="Transparent" BorderThickness="0"
+          <ListBox x:Name="LyricsItems" Panel.ZIndex="2" Margin="20,0" Background="Transparent" BorderThickness="0"
                    ScrollViewer.VerticalScrollBarVisibility="Hidden" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                    ScrollViewer.CanContentScroll="True" VirtualizingPanel.IsVirtualizing="True"
                    VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel"
@@ -104,17 +114,15 @@
                 <DataTemplate>
                   <Border Visibility="{Binding Visibility}" Padding="{Binding Padding}" HorizontalAlignment="Stretch"
                           MouseLeftButtonUp="LyricLine_MouseLeftButtonUp" Tag="{Binding StartMs}" Cursor="Hand">
-                    <StackPanel HorizontalAlignment="Center" MaxWidth="1000">
-                      <TextBlock Text="{Binding Text}" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center"
+                    <StackPanel HorizontalAlignment="Center" MaxWidth="850" Margin="0,0,0,0">
+                      <TextBlock Text="СЛЕДУЮЩАЯ СТРОКА" Visibility="{Binding NextCueVisibility}"
+                                 Foreground="{DynamicResource SecondaryBrush}" FontSize="10" FontWeight="SemiBold"
+                                 HorizontalAlignment="Center" TextAlignment="Center"
+                                 Margin="0,5,0,16"/>
+                      <TextBlock TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center"
                                  FontFamily="Segoe UI" FontSize="{Binding FontSize}" FontWeight="{Binding Weight}"
                                  LineHeight="{Binding LineHeight}" LineStackingStrategy="BlockLineHeight"
-                                 Foreground="{Binding Foreground}" Opacity="{Binding Opacity}"/>
-                      <Grid Height="2" Width="230" Margin="0,18,0,0" Visibility="{Binding ProgressVisibility}"
-                            HorizontalAlignment="Center" ClipToBounds="True">
-                        <Border Background="#48414D" CornerRadius="1"/>
-                        <ProgressBar Style="{StaticResource LyricProgress}" Minimum="0" Maximum="100" Value="{Binding Progress}" Foreground="{DynamicResource AccentBrush}"
-                                     Background="Transparent" BorderThickness="0"/>
-                      </Grid>
+                                 Opacity="{Binding Opacity}" xml:space="preserve"><Run Text="{Binding HighlightedText}" Foreground="{Binding HighlightForeground}"/><Run Text="{Binding RemainingText}" Foreground="{Binding Foreground}"/></TextBlock>
                     </StackPanel>
                   </Border>
                 </DataTemplate>
@@ -167,7 +175,7 @@
                 <TextBlock x:Name="AmbienceValue" Text="10%" Style="{StaticResource ValueText}" DockPanel.Dock="Right"/></DockPanel>
               <Slider x:Name="AmbienceSlider" Minimum="0" Maximum="40" TickFrequency="1" Style="{StaticResource SettingSlider}" ValueChanged="SettingSlider_Changed"/>
               <CheckBox x:Name="SmoothCheck" Content="Плавная прокрутка" Style="{StaticResource SettingCheck}" Click="SettingCheck_Click"/>
-              <CheckBox x:Name="ProgressCheck" Content="Показывать прогресс строки" Style="{StaticResource SettingCheck}" Click="SettingCheck_Click"/>
+              <CheckBox x:Name="ProgressCheck" Content="Караоке-подсветка текста" Style="{StaticResource SettingCheck}" Click="SettingCheck_Click"/>
               <CheckBox x:Name="TopCheck" Content="Поверх других окон" Style="{StaticResource SettingCheck}" Click="SettingCheck_Click"/>
               <TextBlock Text="КЛАВИШИ" Style="{StaticResource SectionHeading}"/>
               <Grid>

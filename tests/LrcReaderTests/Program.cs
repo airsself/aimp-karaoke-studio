@@ -21,4 +21,16 @@ try {
     Check(decoded.Lines[0].Text == "Тест", "UTF-16 decode");
 }
 finally { File.Delete(temp); }
-Console.WriteLine("7 managed LRC scenarios passed");
+var enhanced = LrcReader.Parse("[00:01.00]<00:01.00>Снова <00:01.50>споём <00:02.00>дальше");
+Check(enhanced.Synced && enhanced.Lines.Count==1 && enhanced.Lines[0].Words.Count==3,"enhanced words");
+Check(enhanced.Lines[0].Words[1].StartMs==1500 && enhanced.Lines[0].Words[1].EndMs==2000,"precision word timing");
+Check(enhanced.Lines[0].Text=="Снова споём дальше","enhanced text reconstruction");
+var shifted = LrcReader.Parse("[00:01.00]<00:01.00>hello <00:02.00>world\n[offset:500]");
+Check(shifted.Lines[0].Words[1].StartMs==2500,"word timing global offset");
+Check(KaraokeHighlightEngine.GetHighlightLength("Снова споём дальше", enhanced.Lines[0].Words, 1000, 5000, 0)==0,"initial word sweep");
+Check(KaraokeHighlightEngine.GetHighlightLength("Снова споём дальше", enhanced.Lines[0].Words, 1000, 5000, 25)>=6,"timed word sweep");
+Check(KaraokeHighlightEngine.GetHighlightLength("Снова споём дальше", enhanced.Lines[0].Words, 1000, 5000, 100)=="Снова споём дальше".Length,"final word sweep");
+var emoji="Тест 👩‍🎤!";
+int emojiCut=KaraokeHighlightEngine.GetHighlightLength(emoji,null,0,2000,60);
+Check(emojiCut >= 0 && emojiCut <= emoji.Length && !(emojiCut>0&&char.IsHighSurrogate(emoji[emojiCut-1])),"unicode boundary");
+Console.WriteLine("13 managed LRC/highlighting scenarios passed");

@@ -69,7 +69,18 @@ std::string AsLyricsJson(const ParsedLyrics& data,int generation,const char* sou
         if(count>=5000)break;
         std::wstring capped=ln.text.substr(0,8192);
         std::string entry="{\"startMs\":"+std::to_string(ln.startMs)+",\"endMs\":"+std::to_string(ln.endMs)
-            +",\"text\":"+JsonString(capped)+"}";
+            +",\"text\":"+JsonString(capped);
+        if(!ln.words.empty()){
+            entry+=",\"words\":[";
+            for(size_t wi=0;wi<ln.words.size();++wi){
+                const auto& w=ln.words[wi];
+                if(wi)entry+=",";
+                entry+="{\"startMs\":"+std::to_string(w.startMs)+",\"endMs\":"+std::to_string(w.endMs)
+                    +",\"text\":"+JsonString(w.text)+"}";
+            }
+            entry+="]";
+        }
+        entry+="}";
         if(out.size()+entry.size()+2>800000){
             return "{\"type\":\"lyrics\",\"generation\":"+std::to_string(generation)
                 +",\"source\":\"error\",\"synced\":false,\"error\":\"lyrics_too_large\",\"lines\":[]}";

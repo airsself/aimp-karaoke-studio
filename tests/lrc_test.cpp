@@ -15,6 +15,13 @@ int main(){
     auto late=ParseLrc(L"[00:10]First\n[offset:1000]\n[00:12]Second\n");
     check(late.lines.size()==2&&late.lines[0].startMs==11000&&late.lines[1].startMs==13000,"late offset");
     auto clipped=ParseLrc(L"[offset:-5000]\n[00:01]early\n");check(clipped.lines[0].startMs==0,"clamped offset");
-    std::cout<<"7 LRC parser scenarios passed\n";
+    auto enhanced=ParseLrc(L"[00:01.00]<00:01.00>Снова <00:01.50>споём <00:02.00>дальше\n");
+    check(enhanced.synced && enhanced.lines.size()==1 && enhanced.lines[0].words.size()==3,"enhanced word count");
+    check(enhanced.lines[0].words[0].startMs==1000 && enhanced.lines[0].words[0].endMs==1500,"word timing 1");
+    check(enhanced.lines[0].words[1].startMs==1500 && enhanced.lines[0].words[1].endMs==2000,"word timing 2");
+    check(enhanced.lines[0].text==L"Снова споём дальше","enhanced plain text");
+    auto shifted=ParseLrc(L"[00:01.00]<00:01.00>Hello <00:02.00>world\n[offset:500]\n");
+    check(shifted.lines[0].words[1].startMs==2500,"enhanced offset");
+    std::cout<<"9 LRC parser scenarios passed\n";
  }catch(const std::exception& e){std::cerr<<"FAIL: "<<e.what()<<'\n';return 1;}
 }
