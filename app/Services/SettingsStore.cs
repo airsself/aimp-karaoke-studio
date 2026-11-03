@@ -5,7 +5,9 @@ namespace KaraokeStudio.Services;
 
 public sealed class StudioSettings
 {
-    public int SchemaVersion { get; set; } = 3;
+    public int SchemaVersion { get; set; } = 4;
+    public bool TranslationEnabled { get; set; }
+    public string TranslationSourceLanguage { get; set; } = "auto";
     public double FontSize { get; set; } = 48;
     public double LineSpacing { get; set; } = 1.36;
     public double VerseGap { get; set; } = 18;
@@ -45,6 +47,7 @@ public static class SettingsStore
                         if (Math.Abs(existing.NeighborContrast - 43) < 0.1) existing.NeighborContrast = 64;
                         existing.SchemaVersion = 3;
                     }
+                    if (existing.SchemaVersion < 4) existing.SchemaVersion = 4;
                     return existing;
                 }
         }

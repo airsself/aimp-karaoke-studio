@@ -66,6 +66,33 @@ public sealed class LyricLineViewModel : INotifyPropertyChanged
         RemainingText = Text[cut..];
     }
 
+    // The translation is keyed to this original lyric line, so both columns
+    // remain time-aligned even when Russian text wraps to more visual lines.
+    private string _translationText = "";
+    public string TranslationText
+    {
+        get => _translationText;
+        set { if (_translationText != value) { _translationText = value; Changed(); } }
+    }
+    private Visibility _translationVisibility = Visibility.Collapsed;
+    public Visibility TranslationVisibility
+    {
+        get => _translationVisibility;
+        set { if (_translationVisibility != value) { _translationVisibility = value; Changed(); } }
+    }
+    private double _translationPaneWidth;
+    public double TranslationPaneWidth
+    {
+        get => _translationPaneWidth;
+        set { if (Math.Abs(_translationPaneWidth - value) > 0.5) { _translationPaneWidth = value; Changed(); } }
+    }
+    private double _translationFontSize = 35;
+    public double TranslationFontSize
+    {
+        get => _translationFontSize;
+        set { if (Math.Abs(_translationFontSize - value) > 0.05) { _translationFontSize = value; Changed(); } }
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
     private void Changed([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }

@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.0.0 — Bilingual Lyrics / auto Russian translation (2026-11-04)
+
+- Add a toolbar toggle splitting the lyric canvas into original and Russian columns.
+- Preserve synchronized lyrics and karaoke timings with one virtualized row per timestamp.
+- Opt-in automatic Russian translation via the HTTPS MyMemory public API.
+- Cache translations by hashed original text and language for repeat playback.
+- Prioritize the current line and upcoming lyrics; show progress and quota/error messages.
+- Allow manual source-language selection for non-English Latin-script songs.
+- Cancel pending translation when changing songs, input language, or closing the pane.
+- Keep native AIMP IPC and player controls untouched.
+- Add translation mock-HTTP unit tests and Windows split-pane smoke verification.
+
+
 ## 0.4.1 — Transport controls and uniform secondary lyrics (2026-11-03)
 
 - Remove the "Следующая строка" caption entirely.

@@ -1,4 +1,4 @@
-# AIMP Karaoke Studio v0.4.1 — Transport Fix + Vocal Focus
+# AIMP Karaoke Studio v2.0 — Bilingual Lyrics + Auto Russian Translation
 
 An AIMP 5.40 C++ plugin and a separate WPF 10 Windows lyrics window, styled to match the original AIMP dark UI.
 
@@ -9,6 +9,29 @@ An AIMP 5.40 C++ plugin and a separate WPF 10 Windows lyrics window, styled to m
 - Three lyrics modes (Reading, Karaoke, Stage), **Vocal Focus** layout, virtualized lyric text, inline karaoke fill, font scaling, smooth line scroll, full-screen, manual reading and live controls.
 - Offline embedded album artwork via AIMP AlbumArt (for PNG/JPEG encoded image container data up to 450 kB), asynchronous local cover fallback.
 - Windows configuration persistence, parser tests, build/package scripts and diagnostic logs.
+
+## Bilingual Lyrics (v2.0)
+
+Click **RU · Перевод** to split the lyric canvas into synchronized original
+and Russian translation columns. Both columns share the same virtualized
+row, timestamp and scroll position; the original retains its karaoke
+word-timed highlighting. AIMP native DLL and IPC are unchanged.
+
+Translation begins automatically only after the user enables the panel
+(and on later tracks while the panel remains enabled). The app sends
+**only lyric text**, not audio files, filenames or identity data, over HTTPS
+to the MyMemory public translation API. Repeated translations use a local
+cache at %LOCALAPPDATA%/AimpKaraokeStudio/translations.v1.json.
+
+MyMemory requires no key for anonymous usage, but limits requests to
+500 bytes per segment and 5,000 characters/day. The app chunks long lines,
+prioritizes the current and next phrases, and reports quota/network errors
+without disrupting playback. Automatic language selection detects scripts;
+English is the Latin-script default and other input languages can be
+selected in Settings.
+
+Official provider docs: https://mymemory.translated.net/doc/spec.php
+and https://mymemory.translated.net/doc/usagelimits.php
 
 ## Word-timed karaoke
 

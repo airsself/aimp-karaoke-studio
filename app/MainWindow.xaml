@@ -45,7 +45,7 @@
       <!-- Track strip + display modes -->
       <Border Grid.Row="1" Background="{StaticResource ToolbarBrush}" BorderBrush="{StaticResource StrokeBrush}" BorderThickness="0,0,0,1">
         <Grid Margin="18,0">
-          <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+          <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
           <Grid Width="43" Height="43" Margin="0,0,12,0" VerticalAlignment="Center">
             <Border BorderBrush="#38373B" BorderThickness="1" Background="#252428" CornerRadius="2"/>
             <TextBlock x:Name="CoverPlaceholder" Text="♪" FontSize="22" Foreground="#797486" HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -70,7 +70,10 @@
               <Button x:Name="StageButton" Content="Сцена" Style="{StaticResource ModeButton}" Click="Stage_Click"/>
             </StackPanel>
           </Border>
-          <Button x:Name="SettingsButton" Grid.Column="3" Content="⚙  Настройки" Style="{StaticResource OutlineButton}"
+          <Button x:Name="TranslationButton" Grid.Column="3" Content="RU · Перевод"
+                  Style="{StaticResource OutlineButton}" Margin="0,0,9,0" VerticalAlignment="Center"
+                  ToolTip="Разделить окно на оригинал и автоматический перевод на русский" Click="Translation_Click"/>
+          <Button x:Name="SettingsButton" Grid.Column="4" Content="⚙  Настройки" Style="{StaticResource OutlineButton}"
                   Margin="0" VerticalAlignment="Center" Click="Settings_Click"/>
         </Grid>
       </Border>
@@ -93,6 +96,20 @@
               </RadialGradientBrush>
             </Rectangle.Fill>
           </Rectangle>
+          <!-- A single virtualized list contains both columns: wrapped translations
+               cannot drift away from their original timestamped lyric line. -->
+          <Grid x:Name="TranslationHeader" Panel.ZIndex="3" Visibility="Collapsed" IsHitTestVisible="False"
+                HorizontalAlignment="Stretch" VerticalAlignment="Top" Margin="28,14,28,0">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <TextBlock Text="ОРИГИНАЛ" Foreground="{DynamicResource SecondaryBrush}" FontSize="10"
+                       HorizontalAlignment="Center"/>
+            <StackPanel Grid.Column="1" HorizontalAlignment="Center" MaxWidth="350">
+              <TextBlock Text="РУССКИЙ ПЕРЕВОД" Foreground="#D7C7F4" FontSize="10"
+                         FontWeight="SemiBold" HorizontalAlignment="Center"/>
+              <TextBlock x:Name="TranslationStatus" Text="Ожидаем текст песни" Foreground="#9892A5"
+                         FontSize="10" Margin="0,6,0,0" TextAlignment="Center" TextWrapping="Wrap"/>
+            </StackPanel>
+          </Grid>
           <TextBlock x:Name="SyncIndicator" Text="ПОСТРОЧНАЯ СИНХРОНИЗАЦИЯ" Foreground="{DynamicResource SecondaryBrush}" FontSize="10"
                      HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,17,20,0" Panel.ZIndex="3"/>
           <ListBox x:Name="LyricsItems" Panel.ZIndex="2" Margin="20,0" Background="Transparent" BorderThickness="0"
@@ -114,12 +131,26 @@
                 <DataTemplate>
                   <Border Visibility="{Binding Visibility}" Padding="{Binding Padding}" HorizontalAlignment="Stretch"
                           MouseLeftButtonUp="LyricLine_MouseLeftButtonUp" Tag="{Binding StartMs}" Cursor="Hand">
-                    <StackPanel HorizontalAlignment="Center" MaxWidth="850" Margin="0,0,0,0">
-                      <TextBlock TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center"
-                                 FontFamily="Segoe UI" FontSize="{Binding FontSize}" FontWeight="{Binding Weight}"
-                                 LineHeight="{Binding LineHeight}" LineStackingStrategy="BlockLineHeight"
-                                 Opacity="{Binding Opacity}" xml:space="preserve"><Run Text="{Binding HighlightedText, Mode=OneWay}" Foreground="{Binding HighlightForeground}"/><Run Text="{Binding RemainingText, Mode=OneWay}" Foreground="{Binding Foreground}"/></TextBlock>
-                    </StackPanel>
+                    <DockPanel LastChildFill="True" HorizontalAlignment="Stretch">
+                      <Border DockPanel.Dock="Right" Width="{Binding TranslationPaneWidth}"
+                              Visibility="{Binding TranslationVisibility}" Padding="19,0,9,0"
+                              BorderBrush="#393341" BorderThickness="1,0,0,0">
+                        <TextBlock Text="{Binding TranslationText, Mode=OneWay}" TextWrapping="Wrap"
+                                   TextAlignment="Center" HorizontalAlignment="Stretch"
+                                   VerticalAlignment="Center" MaxWidth="820"
+                                   FontFamily="Segoe UI" FontSize="{Binding TranslationFontSize}"
+                                   FontWeight="{Binding Weight}" LineHeight="{Binding LineHeight}"
+                                   LineStackingStrategy="BlockLineHeight" Foreground="{Binding Foreground}"
+                                   Opacity="{Binding Opacity}"/>
+                      </Border>
+                      <Border Padding="10,0,14,0">
+                        <TextBlock TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Stretch"
+                                   VerticalAlignment="Center" MaxWidth="850"
+                                   FontFamily="Segoe UI" FontSize="{Binding FontSize}" FontWeight="{Binding Weight}"
+                                   LineHeight="{Binding LineHeight}" LineStackingStrategy="BlockLineHeight"
+                                   Opacity="{Binding Opacity}" xml:space="preserve"><Run Text="{Binding HighlightedText, Mode=OneWay}" Foreground="{Binding HighlightForeground}"/><Run Text="{Binding RemainingText, Mode=OneWay}" Foreground="{Binding Foreground}"/></TextBlock>
+                      </Border>
+                    </DockPanel>       </StackPanel>
                   </Border>
                 </DataTemplate>
               </ListBox.ItemTemplate>
@@ -173,6 +204,33 @@
               <CheckBox x:Name="SmoothCheck" Content="Плавная прокрутка" Style="{StaticResource SettingCheck}" Click="SettingCheck_Click"/>
               <CheckBox x:Name="ProgressCheck" Content="Караоке-подсветка текста" Style="{StaticResource SettingCheck}" Click="SettingCheck_Click"/>
               <CheckBox x:Name="TopCheck" Content="Поверх других окон" Style="{StaticResource SettingCheck}" Click="SettingCheck_Click"/>
+              <TextBlock Text="ПЕРЕВОД" Style="{StaticResource SectionHeading}"/>
+              <TextBlock Text="Язык оригинала" Style="{StaticResource SmallText}" Margin="0,0,0,6"/>
+              <ComboBox x:Name="TranslationSourceCombo" Height="30" Background="#24212A"
+                        Foreground="#ECEAF2" BorderBrush="#504658" Padding="7,3"
+                        SelectionChanged="TranslationSource_Changed">
+                <ComboBox.ItemContainerStyle>
+                  <Style TargetType="ComboBoxItem">
+                    <Setter Property="Foreground" Value="#ECEAF2"/>
+                    <Setter Property="Background" Value="#24212A"/>
+                  </Style>
+                </ComboBox.ItemContainerStyle>
+                <ComboBoxItem Content="Авто (EN / JA / KO / ZH / RU)" Tag="auto"/>
+                <ComboBoxItem Content="Английский" Tag="en"/>
+                <ComboBoxItem Content="Японский" Tag="ja"/>
+                <ComboBoxItem Content="Корейский" Tag="ko"/>
+                <ComboBoxItem Content="Китайский" Tag="zh-CN"/>
+                <ComboBoxItem Content="Испанский" Tag="es"/>
+                <ComboBoxItem Content="Французский" Tag="fr"/>
+                <ComboBoxItem Content="Немецкий" Tag="de"/>
+                <ComboBoxItem Content="Итальянский" Tag="it"/>
+                <ComboBoxItem Content="Португальский" Tag="pt"/>
+                <ComboBoxItem Content="Русский" Tag="ru"/>
+              </ComboBox>
+              <Button Content="↻  Повторить перевод" Style="{StaticResource OutlineButton}"
+                      Margin="0,10,0,0" HorizontalAlignment="Stretch" Click="TranslationRetry_Click"/>
+              <TextBlock Text="Перевод выполняет онлайн-сервис MyMemory: текст строк отправляется третьей стороне только при включённой панели. Бесплатный лимит — 5000 символов в сутки. Готовые переводы кешируются локально."
+                         Foreground="#9692A1" FontSize="10" TextWrapping="Wrap" Margin="0,9,0,0"/>
               <TextBlock Text="КЛАВИШИ" Style="{StaticResource SectionHeading}"/>
               <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>

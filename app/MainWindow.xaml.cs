@@ -35,6 +35,10 @@ public partial class MainWindow : Window
     private static readonly Brush NearBrush = Solid("#C0BDC8");
     private readonly ObservableCollection<LyricLineViewModel> _lines = [];
     private readonly PlaybackClock _clock = new();
+    private readonly TranslationService _translationService = new();
+    private CancellationTokenSource? _translationCancel;
+    private int _translationSession;
+    private bool _translationEnabled;
     private readonly DispatcherTimer _frames = new() { Interval = TimeSpan.FromMilliseconds(16) };
     private readonly PipeClient? _pipe;
     private readonly StudioSettings _settings = SettingsStore.Load();
@@ -67,6 +71,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _mode = _settings.Mode is "Reading" or "Karaoke" or "Stage" ? _settings.Mode : "Reading";
+        _translationEnabled = _settings.TranslationEnabled;
         _settings.FontSize = Math.Clamp(_settings.FontSize, 24, 100);
         _settings.LineSpacing = Math.Clamp((_settings.LineSpacing < 1.05 || _settings.LineSpacing > 2.1) ? 1.48 : _settings.LineSpacing, 1.1, 2.0);
         _settings.NeighborContrast = Math.Clamp(_settings.NeighborContrast, 15, 95);
@@ -93,6 +98,10 @@ public partial class MainWindow : Window
             }
         }
         LyricsItems.ItemsSource = _lines;
+        TranslationSourceCombo.SelectedItem = TranslationSourceCombo.Items
+            .OfType<ComboBoxItem>()
+            .FirstOrDefault(x => (x.Tag as string) == _settings.TranslationSourceLanguage)
+            ?? TranslationSourceCombo.Items[0];
         _demo = string.IsNullOrWhiteSpace(pipeName);
         if (!_demo) Title = "AIMP Karaoke Studio - " + pipeName;
         if (!_demo)
@@ -120,6 +129,7 @@ public partial class MainWindow : Window
         ApplyAccent();
         UpdateSettingsValues();
         ApplyLineStyles();
+        UpdateTranslationLayout();
     }
 
     private static SolidColorBrush Solid(string hex)
@@ -143,6 +153,7 @@ public partial class MainWindow : Window
         Top = Math.Max(tl.Y, Math.Min(Top, br.Y - Height));
         _scrollViewer = FindChild<ScrollViewer>(LyricsItems);
         UpdateViewportPadding();
+        UpdateTranslationLayout();
         if (_demo) StartDemo(); else _pipe?.Start();
         _frames.Start();
     }
@@ -153,6 +164,7 @@ public partial class MainWindow : Window
         _frames.Stop();
         _pipe?.Dispose();
         _artworkCancel?.Cancel();
+        _translationCancel?.Cancel();
         if (!_fullscreen && WindowState == WindowState.Normal)
         {
             _settings.WindowLeft = Left;
@@ -223,7 +235,9 @@ public partial class MainWindow : Window
                 TrackTitle.Text = string.IsNullOrWhiteSpace(message.Title) ? "Неизвестная композиция" : message.Title;
                 TrackArtist.Text = string.IsNullOrWhiteSpace(message.Album) ? message.Artist : $"{message.Artist} · {message.Album}";
                 _durationMs = Math.Max(0, message.DurationMs);
+                CancelTranslation();
                 _lines.Clear(); _synced = false; _currentIndex = -2;
+                if (_translationEnabled) TranslationStatus.Text = "Ожидаем текст песни";
                 _lastScrollIndex = 0;
                 _clock.Seek(0);
                 CoverImage.Source = null;
@@ -318,6 +332,8 @@ public partial class MainWindow : Window
         EmptyDescription.Text = "Откройте LRC кнопкой внизу или добавьте файл с тем же названием, что и аудиотрек.";
         _currentIndex = -2;
         ApplyLineStyles();
+        UpdateTranslationLayout();
+        BeginTranslation();
         Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
         {
             UpdateViewportPadding();
@@ -427,6 +443,8 @@ public partial class MainWindow : Window
                 item.FontSize = _settings.FontSize * 0.70 * _settings.PlainTextScale;
                 item.Opacity = 0.84;
             }
+            // Russian and original phrases share a timeline and row height.
+            item.TranslationFontSize = active ? item.FontSize * 0.94 : item.FontSize;
             item.LineHeight = Math.Max(item.FontSize * 1.14, item.FontSize * _settings.LineSpacing);
             item.Padding = new Thickness(8, _settings.VerseGap * 0.6, 8, _settings.VerseGap * 0.6);
             item.ProgressVisibility = Visibility.Collapsed; // no separate progress bar
@@ -595,6 +613,120 @@ public partial class MainWindow : Window
         return null;
     }
 
+    // One shared virtualized row per timestamp; translations never lose
+    // alignment if they occupy more lines than the original text.
+    private void UpdateTranslationLayout()
+    {
+        if (!_ready) return;
+        TranslationHeader.Visibility = _translationEnabled ? Visibility.Visible : Visibility.Collapsed;
+        SyncIndicator.Visibility = _translationEnabled ? Visibility.Collapsed : Visibility.Visible;
+        TranslationButton.Content = _translationEnabled ? "RU · Закрыть" : "RU · Перевод";
+        TranslationButton.Background = _translationEnabled ? Solid("#3B3151") : Solid("#1D1B21");
+        TranslationButton.BorderBrush = _translationEnabled ? Solid("#7A659C") : Solid("#34313B");
+        double width = LyricsItems.ActualWidth > 0 ? LyricsItems.ActualWidth : Math.Max(400, ActualWidth - 48);
+        // Take half the available lyric canvas; leave room for both halves to wrap.
+        double paneWidth = Math.Max(140, (width - 24) * 0.50);
+        foreach (var line in _lines)
+        {
+            line.TranslationVisibility = _translationEnabled ? Visibility.Visible : Visibility.Collapsed;
+            line.TranslationPaneWidth = _translationEnabled ? paneWidth : 0;
+        }
+    }
+
+    private void CancelTranslation()
+    {
+        ++_translationSession;
+        _translationCancel?.Cancel();
+        _translationCancel = null;
+    }
+
+    private void SetTranslationVisible(bool visible)
+    {
+        if (_translationEnabled == visible) return;
+        _translationEnabled = visible;
+        _settings.TranslationEnabled = visible;
+        UpdateTranslationLayout();
+        ApplyLineStyles();
+        if (visible) BeginTranslation();
+        else CancelTranslation();
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded,
+            new Action(() => { UpdateViewportPadding(); UpdateTargetScroll(); }));
+    }
+
+    private void Translation_Click(object sender, RoutedEventArgs e)
+        => SetTranslationVisible(!_translationEnabled);
+
+    private void TranslationRetry_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_translationEnabled) SetTranslationVisible(true);
+        else BeginTranslation();
+    }
+
+    private void TranslationSource_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_ready || TranslationSourceCombo.SelectedItem is not ComboBoxItem selected
+            || selected.Tag is not string code) return;
+        if (_settings.TranslationSourceLanguage == code) return;
+        _settings.TranslationSourceLanguage = code;
+        if (_translationEnabled) BeginTranslation();
+    }
+
+    private void BeginTranslation()
+    {
+        CancelTranslation();
+        if (!_translationEnabled || _closing) return;
+        if (_lines.Count == 0)
+        {
+            TranslationStatus.Text = "Ожидаем текст песни";
+            return;
+        }
+        var tokenSource = new CancellationTokenSource();
+        _translationCancel = tokenSource;
+        int session = _translationSession;
+        string[] lines = _lines.Select(x => x.Text).ToArray();
+        foreach (var line in _lines)
+            line.TranslationText = string.IsNullOrWhiteSpace(line.Text) ? "" : "…";
+        TranslationStatus.Text = "Переводим строки…";
+        int focus = Math.Max(0, _currentIndex);
+        _ = TranslateCurrentTrackAsync(lines, _settings.TranslationSourceLanguage, focus, session, tokenSource.Token);
+    }
+
+    private async Task TranslateCurrentTrackAsync(string[] lyrics, string language,
+        int focus, int session, CancellationToken cancellation)
+    {
+        bool Current() => !cancellation.IsCancellationRequested && !_closing &&
+                          _translationEnabled && session == _translationSession;
+        try
+        {
+            await _translationService.TranslateLinesAsync(
+                lyrics, language, focus,
+                (index, translated, cached) =>
+                {
+                    if (!Current() || index >= _lines.Count) return;
+                    _lines[index].TranslationText = translated;
+                    if (Math.Abs(index - _currentIndex) <= 2)
+                        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(UpdateTargetScroll));
+                },
+                (done, total) =>
+                {
+                    if (Current()) TranslationStatus.Text = $"Переведено {done}/{total}";
+                },
+                cancellation);
+            if (Current()) TranslationStatus.Text = "Перевод завершён · MyMemory";
+        }
+        catch (OperationCanceledException) { }
+        catch (TranslationException error)
+        {
+            if (Current()) TranslationStatus.Text = error.Message + " · Повтор: Настройки";
+            StudioLog.Error("Translation", error);
+        }
+        catch (Exception error)
+        {
+            if (Current()) TranslationStatus.Text = "Ошибка перевода. Повторите в настройках.";
+            StudioLog.Error("Translation", error);
+        }
+    }
+
     private void ToggleSettings(bool? show = null)
     {
         if (_fullscreen) return;
@@ -602,7 +734,7 @@ public partial class MainWindow : Window
         SettingsDrawer.Visibility = _settingsOpen ? Visibility.Visible : Visibility.Collapsed;
         ApplyResponsiveSettingsLayout();
         SettingsButton.Background = _settingsOpen ? Solid("#342B44") : Solid("#1D1B21");
-        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(UpdateTargetScroll));
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() => { UpdateTranslationLayout(); UpdateTargetScroll(); }));
     }
 
     private void ToggleFullscreen()
@@ -642,7 +774,7 @@ public partial class MainWindow : Window
             Topmost = _settings.AlwaysOnTop;
             if (_settingsBeforeFullscreen) ToggleSettings(true);
         }
-        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(UpdateTargetScroll));
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() => { UpdateTranslationLayout(); UpdateTargetScroll(); }));
     }
 
     private void AdjustFont(int delta)
@@ -769,13 +901,15 @@ public partial class MainWindow : Window
         SeekTo(line.StartMs);
     }
     private void ScrollArea_SizeChanged(object sender, SizeChangedEventArgs e) =>
-        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() => { UpdateViewportPadding(); UpdateTargetScroll(); }));
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+            { UpdateViewportPadding(); UpdateTranslationLayout(); UpdateTargetScroll(); }));
 
     private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         if (!_ready) return;
         ApplyResponsiveSettingsLayout();
-        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() => { UpdateViewportPadding(); UpdateTargetScroll(); }));
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+            { UpdateViewportPadding(); UpdateTranslationLayout(); UpdateTargetScroll(); }));
     }
     private void LyricsItems_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {

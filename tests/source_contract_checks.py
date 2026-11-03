@@ -33,6 +33,9 @@ checks={
 'player command acknowledgement': 'commandResult' in plugin,
 'handles Windows CRLF command frames': 'DecodeKaraokeCommand' in pipe and (r/'plugin/CommandProtocol.h').exists(),
 'seek uses click coordinate': 'e.GetPosition(SeekSlider)' in ui,
+'bilingual UI toggle': 'TranslationButton' in xaml and 'SetTranslationVisible' in ui,
+'aligned bilingual row template': 'TranslationPaneWidth' in xaml and 'TranslationText' in xaml,
+'automatic translator with cache': (r/'app/Services/TranslationService.cs').exists() and 'BeginTranslation' in ui,
 }
 for k,v in checks.items():
     if not v: raise AssertionError(k)

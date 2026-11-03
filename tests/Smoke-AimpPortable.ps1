@@ -21,6 +21,7 @@ $report = [ordered]@{
   demoAlive = $false
   demoWindowCreated = $false
   uiAutomationConnectionFound = $false
+  bilingualSplitVerified = $false
   screenshotCaptured = $false
   pluginDllLoaded = $false
   aimpLoadedModules = @()
@@ -225,6 +226,30 @@ try {
     $cond = [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::NameProperty, "Подключено к AIMP")
     $label = $rootUi.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)
     $report.uiAutomationConnectionFound = ($null -ne $label)
+    # WPF UI Automation: toggle the split and inspect the right-column header.
+    $toggleCondition = [System.Windows.Automation.PropertyCondition]::new(
+      [System.Windows.Automation.AutomationElement]::NameProperty, "RU · Перевод")
+    $translationToggle = $rootUi.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $toggleCondition)
+    if ($null -ne $translationToggle) {
+      $invoke = $translationToggle.GetCurrentPattern(
+        [System.Windows.Automation.InvokePattern]::Pattern)
+      $invoke.Invoke()
+      Start-Sleep -Seconds 2
+      $headingCondition = [System.Windows.Automation.PropertyCondition]::new(
+        [System.Windows.Automation.AutomationElement]::NameProperty, "РУССКИЙ ПЕРЕВОД")
+      $heading = $rootUi.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $headingCondition)
+      $report.bilingualSplitVerified = $null -ne $heading
+      Write-Host "BILINGUAL SPLIT UI: $($report.bilingualSplitVerified)"
+      if($report.bilingualSplitVerified) {
+        $s = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+        $image = [System.Drawing.Bitmap]::new([Math]::Min($s.Width,1920),[Math]::Min($s.Height,1080))
+        $g2 = [System.Drawing.Graphics]::FromImage($image)
+        try {
+          $g2.CopyFromScreen($s.X,$s.Y,0,0,$image.Size)
+          $image.Save((Join-Path $folder "bilingual-split.png"),[System.Drawing.Imaging.ImageFormat]::Png)
+        } finally { $g2.Dispose(); $image.Dispose() }
+      }
+    }
     # An AIMP first-run dialog can suppress track metadata without crashing WPF;
     # nevertheless WPF should remain responsive after lyrics are loaded.
     Start-Sleep -Seconds 3
