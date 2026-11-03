@@ -274,6 +274,8 @@ public:
                 name="next"; status=player_->GoToNext();break;
             case KAR_CMD_SEEK_MS:
                 name="seek"; status=player_->SetPosition(static_cast<double>(value_)/1000.0);break;
+            case KAR_CMD_STATUS:
+                name="status"; status=S_OK;break;
         }
         // Acknowledge the result; the UI can surface a real SDK error.
         if(auto bridge=bridge_.lock();bridge && running_->load(std::memory_order_acquire)){

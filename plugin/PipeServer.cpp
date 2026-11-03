@@ -117,6 +117,7 @@ void PipeServer::ParseCommand(const std::string& input){
         case KaraokeCommand::Next:QueueCommand(KAR_CMD_NEXT,0);break;
         case KaraokeCommand::Previous:QueueCommand(KAR_CMD_PREVIOUS,0);break;
         case KaraokeCommand::SeekMs:QueueCommand(KAR_CMD_SEEK_MS,static_cast<LPARAM>(frame.positionMs));break;
+        case KaraokeCommand::Status:QueueCommand(KAR_CMD_STATUS,0);break;
         default:break;
     }
 }

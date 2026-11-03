@@ -40,3 +40,4 @@ inline constexpr WPARAM KAR_CMD_TOGGLE=1;
 inline constexpr WPARAM KAR_CMD_PREVIOUS=2;
 inline constexpr WPARAM KAR_CMD_NEXT=3;
 inline constexpr WPARAM KAR_CMD_SEEK_MS=4;
+inline constexpr WPARAM KAR_CMD_STATUS=5;

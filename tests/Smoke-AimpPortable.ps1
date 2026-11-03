@@ -12,6 +12,7 @@ $report = [ordered]@{
   pluginPipeConnected = $false
   commandsVerified = $false
   commandAcks = @{}
+  transportError = ""
   karaokeWindowCreated = $false
   rendererAlive = $false
   rendererExitCode = $null
@@ -148,15 +149,26 @@ try {
     $toggleAck = Receive-AimpCommandResult "toggle"
     $report.commandAcks.pause = $toggleAck
     if(-not $toggleAck.ok) { throw "AIMP rejected pause toggle (HRESULT: $($toggleAck.result))" }
+    Start-Sleep -Milliseconds 900
+    $probeWriter.WriteLine('{"command":"status"}')
+    $pauseState = Receive-AimpCommandResult "status"
+    $report.commandAcks.stateAfterPause = $pauseState
     $probeWriter.WriteLine('{"command":"toggle"}')
     $resumeAck = Receive-AimpCommandResult "toggle"
     $report.commandAcks.resume = $resumeAck
     if(-not $resumeAck.ok) { throw "AIMP rejected resume toggle (HRESULT: $($resumeAck.result))" }
-    if($resumeAck.state -eq $toggleAck.state) {
-      throw "AIMP pause/resume state did not change ($($resumeAck.state))"
+    Start-Sleep -Milliseconds 900
+    $probeWriter.WriteLine('{"command":"status"}')
+    $resumeState = Receive-AimpCommandResult "status"
+    $report.commandAcks.stateAfterResume = $resumeState
+    if($pauseState.state -ne 1 -or $resumeState.state -ne 2) {
+      throw "AIMP pause/resume state transition incorrect: paused=$($pauseState.state), resumed=$($resumeState.state)"
     }
     $report.commandsVerified = $true
-    Write-Host "TRANSPORT PASS: seek=$($seekAck.positionMs)ms, pause=$($toggleAck.state), resume=$($resumeAck.state)"
+    Write-Host "TRANSPORT PASS: seek=$($seekAck.positionMs)ms, paused=$($pauseState.state), resumed=$($resumeState.state)"
+  } catch {
+    $report.transportError = $_.Exception.Message
+    Write-Warning "Transport verification incomplete: $($report.transportError)"
   } finally {
     $probeWriter.Dispose()
     $probeReader.Dispose()

@@ -6,7 +6,7 @@
 // The pipe uses newline-delimited JSON. Windows StreamWriter writes CRLF,
 // while older clients may send LF: normalize the frame terminator before
 // comparing the deliberately small, fixed transport command vocabulary.
-enum class KaraokeCommand : int { Invalid=0, Toggle=1, Previous=2, Next=3, SeekMs=4 };
+enum class KaraokeCommand : int { Invalid=0, Toggle=1, Previous=2, Next=3, SeekMs=4, Status=5 };
 struct KaraokeCommandFrame {
     KaraokeCommand kind=KaraokeCommand::Invalid;
     int positionMs=0;
@@ -14,6 +14,7 @@ struct KaraokeCommandFrame {
 inline KaraokeCommandFrame DecodeKaraokeCommand(std::string_view line) {
     while(!line.empty() && (line.back()=='\r'||line.back()=='\n'))line.remove_suffix(1);
     if(line==R"({"command":"toggle"})")return {KaraokeCommand::Toggle,0};
+    if(line==R"({"command":"status"})")return {KaraokeCommand::Status,0};
     if(line==R"({"command":"previous"})")return {KaraokeCommand::Previous,0};
     if(line==R"({"command":"next"})")return {KaraokeCommand::Next,0};
     constexpr std::string_view prefix=R"({"command":"seek","positionMs":)";
