@@ -13,7 +13,7 @@ checks={
 'callback drain': 'g_callbacksDone.wait' in plugin,
 'bounded IPC payload': 'lyrics_too_large' in plugin and 'json.size()>900000' in pipe,
 'IPC reconnect snapshot': 'latest_[kind]' in pipe and '"artwork","state","position"' in pipe,
-'at most once commands': 'TakeCommands' in pipe and 'DrainCommands()' in plugin,
+'AIMP main-thread dispatch': 'ExecuteInMainThread' in plugin and 'dispatchCommand_' in pipe,
 'generation on position/state': '"generation\\\":"+std::to_string(epoch_->load())' in plugin,
 'virtualized UI': 'VirtualizingPanel.IsVirtualizing="True"' in xaml and 'VirtualizingPanel.VirtualizationMode="Recycling"' in xaml,
 'actual line height': 'LineHeight="{Binding LineHeight}"' in xaml,
@@ -28,6 +28,10 @@ checks={
 'no lyric progress bar': 'LyricProgress' not in xaml,
 'vocal focus anchor': 'UpdateViewportPadding' in ui,
 'precision highlight engine': (r/'app/Services/KaraokeHighlightEngine.cs').exists(),
+'only active phrase grows': 'item.FontSize = _settings.FontSize * 0.70;' in ui,
+'next phrase label removed': 'СЛЕДУЮЩАЯ СТРОКА' not in xaml,
+'player command acknowledgement': 'commandResult' in plugin,
+'seek uses click coordinate': 'e.GetPosition(SeekSlider)' in ui,
 }
 for k,v in checks.items():
     if not v: raise AssertionError(k)

@@ -10,6 +10,8 @@ $report = [ordered]@{
   downloadVerified = $false
   playerStarted = $false
   pluginPipeConnected = $false
+  commandsVerified = $false
+  commandAcks = @{}
   karaokeWindowCreated = $false
   rendererAlive = $false
   rendererExitCode = $null
@@ -112,7 +114,54 @@ try {
   }
   if(-not $connected){ throw "AIMP launched but plugin pipe $pipeName was not found" }
   $report.pluginPipeConnected = $true
-  $p.Dispose()
+
+  # Exercise the REAL native dispatcher before the WPF renderer connects.
+  # The AIMP plugin supports one pipe client at a time. Both commands must
+  # be executed on AIMP's main thread and return observable SDK results.
+  $probeReader = [System.IO.StreamReader]::new($p, [System.Text.UTF8Encoding]::new($false), $false, 65536, $true)
+  $probeWriter = [System.IO.StreamWriter]::new($p, [System.Text.UTF8Encoding]::new($false), 65536, $true)
+  $probeWriter.AutoFlush = $true
+  function Receive-AimpCommandResult([string]$expectedCommand) {
+    $deadline = (Get-Date).AddSeconds(8)
+    while ((Get-Date) -lt $deadline) {
+      $cancelRead = [System.Threading.CancellationTokenSource]::new([TimeSpan]::FromMilliseconds(1100))
+      try {
+        $line = $probeReader.ReadLineAsync($cancelRead.Token).AsTask().GetAwaiter().GetResult()
+      } catch [System.OperationCanceledException] { continue }
+      finally { $cancelRead.Dispose() }
+      if ($null -eq $line) { break }
+      try { $message = $line | ConvertFrom-Json -ErrorAction Stop }
+      catch { continue }
+      if ($message.type -eq 'commandResult' -and $message.command -eq $expectedCommand) { return $message }
+    }
+    throw "Command '$expectedCommand' did not return an AIMP SDK acknowledgement"
+  }
+  try {
+    $probeWriter.WriteLine('{"command":"seek","positionMs":12000}')
+    $seekAck = Receive-AimpCommandResult "seek"
+    $report.commandAcks.seek = $seekAck
+    if(-not $seekAck.ok) { throw "AIMP rejected seek command (HRESULT: $($seekAck.result))" }
+    if([Math]::Abs([double]$seekAck.positionMs - 12000) -gt 2500) {
+      throw "Seek returned success but actual player position is $($seekAck.positionMs) ms"
+    }
+    $probeWriter.WriteLine('{"command":"toggle"}')
+    $toggleAck = Receive-AimpCommandResult "toggle"
+    $report.commandAcks.pause = $toggleAck
+    if(-not $toggleAck.ok) { throw "AIMP rejected pause toggle (HRESULT: $($toggleAck.result))" }
+    $probeWriter.WriteLine('{"command":"toggle"}')
+    $resumeAck = Receive-AimpCommandResult "toggle"
+    $report.commandAcks.resume = $resumeAck
+    if(-not $resumeAck.ok) { throw "AIMP rejected resume toggle (HRESULT: $($resumeAck.result))" }
+    if($resumeAck.state -eq $toggleAck.state) {
+      throw "AIMP pause/resume state did not change ($($resumeAck.state))"
+    }
+    $report.commandsVerified = $true
+    Write-Host "TRANSPORT PASS: seek=$($seekAck.positionMs)ms, pause=$($toggleAck.state), resume=$($resumeAck.state)"
+  } finally {
+    $probeWriter.Dispose()
+    $probeReader.Dispose()
+    $p.Dispose()
+  }
   Start-Sleep -Milliseconds 700
   $renderer = Start-Process -FilePath $wpfExe -ArgumentList ("--pipe " + $pipeName) -PassThru
   $report.rendererPid = $renderer.Id

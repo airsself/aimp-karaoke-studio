@@ -13,6 +13,8 @@ public sealed class PipeMessage
     public bool Synced { get; set; }
     public string Source { get; set; } = "";
     public string Error { get; set; } = "";
+    public bool Ok { get; set; }
+    public string Command { get; set; } = "";
     public string ArtworkPath { get; set; } = "";
     public string ArtworkData { get; set; } = "";
     public List<LyricsDto> Lines { get; set; } = [];

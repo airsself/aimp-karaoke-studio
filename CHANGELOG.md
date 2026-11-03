@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.1 — Transport controls and uniform secondary lyrics (2026-11-03)
+
+- Remove the "Следующая строка" caption entirely.
+- Only the currently sung line is large and accent-colored; all other lines use the same smaller typography.
+- Replace unreliable AIMP init-thread HWND posted-command delivery with SDK `IAIMPServiceThreads::ExecuteInMainThread`.
+- Add observable command acknowledgements and error logging for transport and seek.
+- Seek to the pointer-release coordinate rather than the slider's stale pre-release value, and support keyboard seek on slider arrows.
+- Verify seek and pause/resume on official AIMP 5.40 x64 via Windows smoke test.
+
+
 ## 0.4.0 — Vocal Focus / Precision Karaoke (2026-11-03)
 
 - Implement B (Vocal Focus): compact toolbar, dark violet focus background, stronger active and next lyric hierarchy, anchor compensation for beginning/end of lyrics.

@@ -25,7 +25,7 @@ PSECURITY_DESCRIPTOR CurrentUserPipeAcl() {
     return descriptor;
 }
 }
-PipeServer::PipeServer(HWND commandsWindow):commandWindow_(commandsWindow) {
+PipeServer::PipeServer(std::function<void(WPARAM,LPARAM)> dispatchCommand):dispatchCommand_(std::move(dispatchCommand)) {
     name_=L"AimpKaraokeStudio."+std::to_wstring(GetCurrentProcessId());
 }
 PipeServer::~PipeServer(){Stop();}
@@ -104,23 +104,10 @@ bool PipeServer::ReadCommands(HANDLE pipe,std::string& buffer){
     }
     return buffer.size()<8192;
 }
+// The worker parses IPC only. It never calls AIMP player methods directly;
+// the callback schedules work via IAIMPServiceThreads::ExecuteInMainThread.
 void PipeServer::QueueCommand(WPARAM command,LPARAM argument){
-    {
-        std::lock_guard lock(mu_);
-        if(commands_.size()>=64)commands_.pop_front();
-        commands_.emplace_back(command,argument);
-    }
-    // Message loop delivery is primary; AIMP CoreMessage also drains the
-    // queue so a missed PostMessage never duplicates a command.
-    if(commandWindow_ && !PostMessageW(commandWindow_,WM_KARAOKE_COMMAND,0,0))
-        OutputDebugStringW(L"[KaraokeStudio] WARN command wake message failed\n");
-}
-std::vector<std::pair<WPARAM,LPARAM>> PipeServer::TakeCommands(){
-    std::vector<std::pair<WPARAM,LPARAM>> items;
-    std::lock_guard lock(mu_);
-    items.assign(commands_.begin(),commands_.end());
-    commands_.clear();
-    return items;
+    if(dispatchCommand_)dispatchCommand_(command,argument);
 }
 void PipeServer::ParseCommand(const std::string& s){
     if(s=="{\"command\":\"toggle\"}")QueueCommand(KAR_CMD_TOGGLE,0);

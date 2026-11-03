@@ -1,4 +1,4 @@
-# AIMP Karaoke Studio v0.4 — Vocal Focus + Precision Karaoke
+# AIMP Karaoke Studio v0.4.1 — Transport Fix + Vocal Focus
 
 An AIMP 5.40 C++ plugin and a separate WPF 10 Windows lyrics window, styled to match the original AIMP dark UI.
 

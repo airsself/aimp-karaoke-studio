@@ -276,6 +276,27 @@ public partial class MainWindow : Window
                 _clock.SetPlaying(message.State == 2);
                 PlayButton.Content = message.State == 2 ? "Ⅱ" : "▶";
                 break;
+            case "commandResult":
+                if (!message.Ok)
+                {
+                    StatusText.Text = "AIMP отклонил команду";
+                    StudioLog.Error("AIMP command " + message.Command,
+                        new InvalidOperationException("AIMP SDK returned error: " + message.Result));
+                }
+                else
+                {
+                    if (message.Command == "seek")
+                    {
+                        _clock.SetPosition(Math.Max(0, message.PositionMs));
+                        _lastUiTime = -1;
+                    }
+                    if (message.Command == "toggle")
+                    {
+                        _clock.SetPlaying(message.State == 2);
+                        PlayButton.Content = message.State == 2 ? "Ⅱ" : "▶";
+                    }
+                }
+                break;
         }
     }
 

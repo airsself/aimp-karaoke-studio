@@ -115,10 +115,6 @@
                   <Border Visibility="{Binding Visibility}" Padding="{Binding Padding}" HorizontalAlignment="Stretch"
                           MouseLeftButtonUp="LyricLine_MouseLeftButtonUp" Tag="{Binding StartMs}" Cursor="Hand">
                     <StackPanel HorizontalAlignment="Center" MaxWidth="850" Margin="0,0,0,0">
-                      <TextBlock Text="СЛЕДУЮЩАЯ СТРОКА" Visibility="{Binding NextCueVisibility}"
-                                 Foreground="{DynamicResource SecondaryBrush}" FontSize="10" FontWeight="SemiBold"
-                                 HorizontalAlignment="Center" TextAlignment="Center"
-                                 Margin="0,5,0,16"/>
                       <TextBlock TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center"
                                  FontFamily="Segoe UI" FontSize="{Binding FontSize}" FontWeight="{Binding Weight}"
                                  LineHeight="{Binding LineHeight}" LineStackingStrategy="BlockLineHeight"
@@ -211,7 +207,7 @@
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <TextBlock x:Name="ElapsedText" Text="00:00" VerticalAlignment="Center" FontSize="11" FontFamily="Consolas" Foreground="#A3A0AA" Margin="0,0,12,0"/>
             <Slider x:Name="SeekSlider" Grid.Column="1" Minimum="0" Maximum="1000" Value="0" Margin="0,0,0,0"
-                    Style="{StaticResource SettingSlider}" VerticalAlignment="Center" PreviewMouseLeftButtonUp="SeekSlider_PreviewMouseLeftButtonUp"/>
+                    Style="{StaticResource SettingSlider}" VerticalAlignment="Center" PreviewMouseLeftButtonUp="SeekSlider_PreviewMouseLeftButtonUp" PreviewKeyUp="SeekSlider_PreviewKeyUp"/>
             <TextBlock x:Name="DurationText" Grid.Column="2" Text="00:00" VerticalAlignment="Center" FontSize="11" FontFamily="Consolas" Foreground="#A3A0AA" Margin="12,0,0,0"/>
           </Grid>
           <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">

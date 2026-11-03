@@ -22,6 +22,7 @@
 #include "apiFileManager.h"
 #include "apiMessages.h"
 #include "apiMenu.h"
+#include "apiThreading.h"
 #include "PipeServer.h"
 #include "JsonUtil.h"
 #include "Lrc.h"
@@ -230,7 +231,72 @@ std::vector<TTaskHandle> TakeArtRequests(const std::shared_ptr<std::atomic<int>>
     }
     return ids;
 }
-LRESULT CALLBACK CommandsWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp);
+// Executed by AIMP's own main-thread scheduler. The IPC worker never invokes
+// IAIMPServicePlayer methods directly, and no arbitrary message-loop thread is assumed.
+class PlayerCommandTask final : public IAIMPTask {
+public:
+    PlayerCommandTask(IAIMPServicePlayer* player,
+                      std::shared_ptr<std::atomic<bool>> running,
+                      std::weak_ptr<PipeServer> bridge, WPARAM command, LPARAM value)
+        : player_(player), running_(std::move(running)), bridge_(std::move(bridge)),
+          command_(command), value_(value) {
+        player_->AddRef();
+    }
+    HRESULT WINAPI QueryInterface(REFIID id, void** out) override {
+        if(!out)return E_POINTER;
+        *out=nullptr;
+        if(id!=IID_IUnknown && id!=IID_IAIMPTask)return E_NOINTERFACE;
+        *out=static_cast<IAIMPTask*>(this);
+        AddRef();return S_OK;
+    }
+    ULONG WINAPI AddRef() override {return ++refs_;}
+    ULONG WINAPI Release() override {
+        auto left=--refs_;
+        if(!left)delete this;
+        return left;
+    }
+    void WINAPI Execute(IAIMPTaskOwner*) override {
+        if(!running_->load(std::memory_order_acquire))return;
+        HRESULT status=E_INVALIDARG;
+        const char* name="unknown";
+        switch(command_) {
+            case KAR_CMD_TOGGLE: {
+                name="toggle";
+                const int state=player_->GetState();
+                if(state==AIMP_PLAYER_STATE_PLAYING)status=player_->Pause();
+                else if(state==AIMP_PLAYER_STATE_PAUSED)status=player_->Resume();
+                else status=player_->Play2(nullptr);
+                break;
+            }
+            case KAR_CMD_PREVIOUS:
+                name="previous"; status=player_->GoToPrev();break;
+            case KAR_CMD_NEXT:
+                name="next"; status=player_->GoToNext();break;
+            case KAR_CMD_SEEK_MS:
+                name="seek"; status=player_->SetPosition(static_cast<double>(value_)/1000.0);break;
+        }
+        // Acknowledge the result; the UI can surface a real SDK error.
+        if(auto bridge=bridge_.lock();bridge && running_->load(std::memory_order_acquire)){
+            double seconds=0;
+            const bool hasPosition=SUCCEEDED(player_->GetPosition(&seconds));
+            const auto milliseconds=hasPosition && seconds>=0 ?
+                static_cast<long long>(seconds*1000.0) : 0LL;
+            bridge->Publish("commandResult",
+                "{\"type\":\"commandResult\",\"command\":\""+std::string(name)+
+                "\",\"ok\":"+(SUCCEEDED(status)?"true":"false")+
+                ",\"result\":"+std::to_string(static_cast<long long>(status))+
+                ",\"state\":"+std::to_string(player_->GetState())+
+                ",\"positionMs\":"+std::to_string(milliseconds)+"}");
+        }
+    }
+private:
+    ~PlayerCommandTask(){player_->Release();}
+    std::atomic<ULONG> refs_{1};
+    IAIMPServicePlayer* player_;
+    std::shared_ptr<std::atomic<bool>> running_;
+    std::weak_ptr<PipeServer> bridge_;
+    WPARAM command_; LPARAM value_;
+};
 } // namespace
 
 class KaraokePlugin final:public IAIMPPlugin,public IAIMPMessageHook,public IAIMPActionEvent {
@@ -266,13 +332,14 @@ public:
         core_->QueryInterface(IID_IAIMPServiceLyrics,(void**)&lyrics_);
         core_->QueryInterface(IID_IAIMPServiceAlbumArt,(void**)&art_);
         core_->QueryInterface(IID_IAIMPServiceMessageDispatcher,(void**)&dispatcher_);
-        if(!player_||!dispatcher_){Diagnostic(L"[KaraokeStudio] AIMP Player/Dispatcher service missing");Finalize();return E_NOINTERFACE;}
-        WNDCLASSW wc{};wc.lpfnWndProc=CommandsWndProc;wc.hInstance=g_dll;wc.lpszClassName=L"AimpKaraokeStudioCommandWindow";
-        RegisterClassW(&wc);
-        commandsWindow_=CreateWindowExW(0,wc.lpszClassName,L"",0,0,0,0,0,HWND_MESSAGE,nullptr,g_dll,nullptr);
-        if(!commandsWindow_){Diagnostic(L"[KaraokeStudio] Failed to create command window");Finalize();return E_FAIL;}
-        SetWindowLongPtrW(commandsWindow_,GWLP_USERDATA,reinterpret_cast<LONG_PTR>(this));
-        pipe_=std::make_shared<PipeServer>(commandsWindow_);
+        core_->QueryInterface(IID_IAIMPServiceThreads,(void**)&threads_);
+        if(!player_||!dispatcher_||!threads_){
+            Diagnostic(L"[KaraokeStudio] AIMP Player/Dispatcher/Threads service missing");
+            Finalize();return E_NOINTERFACE;
+        }
+        pipe_=std::make_shared<PipeServer>([this](WPARAM command,LPARAM value){
+            ScheduleCommand(command,value);
+        });
         if(!pipe_->Start()){Diagnostic(L"[KaraokeStudio] Pipe server failed to start");Finalize();return E_FAIL;}
         if(SUCCEEDED(dispatcher_->Hook(this)))hooked_=true;
         IAIMPServiceMenuManager* menus=nullptr;
@@ -297,15 +364,16 @@ public:
         return S_OK;
     }
     HRESULT WINAPI Finalize() override {
+        commandsRunning_->store(false,std::memory_order_release);
         if(epoch_)++(*epoch_);
         CancelRequests();
         if(hooked_&&dispatcher_){dispatcher_->Unhook(this);hooked_=false;}
         if(menu_){if(core_)core_->UnregisterExtension(menu_);menu_->Release();menu_=nullptr;}
         if(pipe_){pipe_->Stop();pipe_.reset();}
-        if(commandsWindow_){DestroyWindow(commandsWindow_);commandsWindow_=nullptr;}
         if(lyrics_){lyrics_->Release();lyrics_=nullptr;}
         if(art_){art_->Release();art_=nullptr;}
         if(player_){player_->Release();player_=nullptr;}
+        if(threads_){threads_->Release();threads_=nullptr;}
         if(dispatcher_){dispatcher_->Release();dispatcher_=nullptr;}
         if(core_){core_->Release();core_=nullptr;}
         return S_OK;
@@ -313,9 +381,6 @@ public:
     void WINAPI SystemNotification(int, IUnknown*) override{}
     void WINAPI OnExecute(IUnknown*) override{LaunchWindow();}
     void WINAPI CoreMessage(LongWord message,int a,void* p,HRESULT*) override {
-        // Secondary drain path when AIMP dispatches events. Commands are
-        // executed exactly once even if a Windows wake message also arrives.
-        DrainCommands();
         switch(message){
             case AIMP_MSG_EVENT_STREAM_START:
             case AIMP_MSG_EVENT_STREAM_START_SUBTRACK:RefreshTrack(true);break;
@@ -329,23 +394,21 @@ public:
             default:break;
         }
     }
-    void DrainCommands(){
-        if(!pipe_)return;
-        for(auto [id,value]:pipe_->TakeCommands())ExecuteCommand(id,value);
-    }
-    void ExecuteCommand(WPARAM command,LPARAM argument){
-        if(!player_)return;
-        switch(command){
-            case KAR_CMD_TOGGLE:
-                if(player_->GetState()==AIMP_PLAYER_STATE_PLAYING)player_->Pause();
-                else if(player_->GetState()==AIMP_PLAYER_STATE_PAUSED)player_->Resume();
-                break;
-            case KAR_CMD_NEXT:player_->GoToNext();break;
-            case KAR_CMD_PREVIOUS:player_->GoToPrev();break;
-            case KAR_CMD_SEEK_MS:player_->SetPosition(static_cast<double>(argument)/1000.0);break;
-        }
-    }
 private:
+    // Schedule every transport/seek action onto AIMP's main thread. Posting to
+    // a message-only HWND created from the SDK initialization callback was
+    // unreliable because that thread does not always pump window messages.
+    void ScheduleCommand(WPARAM command,LPARAM argument){
+        if(!commandsRunning_->load(std::memory_order_acquire)||!threads_||!player_)return;
+        auto* task=new(std::nothrow) PlayerCommandTask(player_,commandsRunning_,pipe_,command,argument);
+        if(!task)return;
+        HRESULT hr=threads_->ExecuteInMainThread(task,0);
+        task->Release(); // SDK retains a task reference if it queued the work.
+        if(FAILED(hr) && pipe_)
+            pipe_->Publish("commandResult",
+                "{\"type\":\"commandResult\",\"command\":\"schedule\",\"ok\":false,"
+                "\"result\":"+std::to_string(static_cast<long long>(hr))+"}");
+    }
     void CancelRequests(){
         const auto ids=TakeRequests(epoch_);
         if(lyrics_){
@@ -474,23 +537,14 @@ private:
     IAIMPServiceLyrics* lyrics_=nullptr;
     IAIMPServiceAlbumArt* art_=nullptr;
     IAIMPServiceMessageDispatcher* dispatcher_=nullptr;
+    IAIMPServiceThreads* threads_=nullptr;
+    std::shared_ptr<std::atomic<bool>> commandsRunning_=std::make_shared<std::atomic<bool>>(true);
     IAIMPMenuItem* menu_=nullptr;
-    HWND commandsWindow_=nullptr;
     bool hooked_=false;
     std::wstring currentIdentity_;
     std::shared_ptr<PipeServer> pipe_;
     std::shared_ptr<std::atomic<int>> epoch_=std::make_shared<std::atomic<int>>(0);
 };
-namespace {
-LRESULT CALLBACK CommandsWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
-    if(msg==WM_KARAOKE_COMMAND){
-        auto* plugin=reinterpret_cast<KaraokePlugin*>(GetWindowLongPtrW(hwnd,GWLP_USERDATA));
-        if(plugin)plugin->DrainCommands();
-        return 0;
-    }
-    return DefWindowProcW(hwnd,msg,wp,lp);
-}
-}
 extern "C" __declspec(dllexport) HRESULT WINAPI AIMPPluginGetHeader(IAIMPPlugin** out){
     if(!out)return E_POINTER;
     *out=new(std::nothrow) KaraokePlugin();
