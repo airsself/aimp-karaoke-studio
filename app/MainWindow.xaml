@@ -150,7 +150,7 @@
                                    LineHeight="{Binding LineHeight}" LineStackingStrategy="BlockLineHeight"
                                    Opacity="{Binding Opacity}" xml:space="preserve"><Run Text="{Binding HighlightedText, Mode=OneWay}" Foreground="{Binding HighlightForeground}"/><Run Text="{Binding RemainingText, Mode=OneWay}" Foreground="{Binding Foreground}"/></TextBlock>
                       </Border>
-                    </DockPanel>       </StackPanel>
+                    </DockPanel>
                   </Border>
                 </DataTemplate>
               </ListBox.ItemTemplate>
