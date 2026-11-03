@@ -443,15 +443,15 @@ public partial class MainWindow : Window
             SettingsColumn.Width = new GridLength(0);
             Grid.SetColumn(SettingsDrawer, 0);
             Grid.SetColumnSpan(SettingsDrawer, 2);
-            SettingsDrawer.HorizontalAlignment = HorizontalAlignment.Right;
+            SettingsDrawer.HorizontalAlignment = System.Windows.HorizontalAlignment.Right;
             SettingsDrawer.Width = Math.Min(298, Math.Max(265, ActualWidth - 22));
-            Panel.SetZIndex(SettingsDrawer, 10);
+            System.Windows.Controls.Panel.SetZIndex(SettingsDrawer, 10);
         }
         else
         {
             Grid.SetColumn(SettingsDrawer, 1);
             Grid.SetColumnSpan(SettingsDrawer, 1);
-            SettingsDrawer.HorizontalAlignment = HorizontalAlignment.Stretch;
+            SettingsDrawer.HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch;
             SettingsDrawer.Width = double.NaN;
             SettingsColumn.Width = _settingsOpen ? new GridLength(298) : new GridLength(0);
         }
