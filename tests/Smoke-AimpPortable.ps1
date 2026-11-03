@@ -58,7 +58,7 @@ try {
 
   # Start player with a generated silent PCM WAV plus enhanced LRC sidecar.
   $wav = Join-Path $root "precision-smoke.wav"
-  $pcm = [byte[]]::new(16000 * 2 * 8)
+  $pcm = [byte[]]::new(16000 * 2 * 35)
   $w = [System.IO.BinaryWriter]::new([System.IO.File]::Create($wav))
   try {
     $w.Write([System.Text.Encoding]::ASCII.GetBytes("RIFF"))
@@ -72,7 +72,7 @@ try {
   @"
 [ar:Studio Test]
 [ti:Enhanced LRC]
-[00:01.00]<00:01.00>One <00:02.00>word <00:03.00>at <00:04.00>a <00:05.00>time<00:06.00>
+[00:01.00]<00:01.00>One <00:05.00>word <00:10.00>at <00:15.00>a <00:20.00>time<00:25.00>
 "@ | Set-Content -Path (Join-Path $root "precision-smoke.lrc") -Encoding utf8
   $player = Start-Process -FilePath $aimpExe.FullName -ArgumentList ('"' + $wav + '"') -WorkingDirectory $aimpExe.DirectoryName -PassThru
   Start-Sleep -Seconds 4

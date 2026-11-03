@@ -131,6 +131,16 @@ public partial class MainWindow : Window
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        // Initial WPF size must fit the active desktop working area even on
+        // 1024px or smaller displays. The authored 1194x760 is only a default.
+        var screen = System.Windows.Forms.Screen.FromHandle(new WindowInteropHelper(this).Handle);
+        var transform = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformFromDevice ?? Matrix.Identity;
+        var tl = transform.Transform(new Point(screen.WorkingArea.Left, screen.WorkingArea.Top));
+        var br = transform.Transform(new Point(screen.WorkingArea.Right, screen.WorkingArea.Bottom));
+        Width = Math.Min(Width, Math.Max(MinWidth, br.X - tl.X - 20));
+        Height = Math.Min(Height, Math.Max(MinHeight, br.Y - tl.Y - 20));
+        Left = Math.Max(tl.X, Math.Min(Left, br.X - Width));
+        Top = Math.Max(tl.Y, Math.Min(Top, br.Y - Height));
         _scrollViewer = FindChild<ScrollViewer>(LyricsItems);
         UpdateViewportPadding();
         if (_demo) StartDemo(); else _pipe?.Start();

@@ -25,6 +25,8 @@ var enhanced = LrcReader.Parse("[00:01.00]<00:01.00>Снова <00:01.50>спо�
 Check(enhanced.Synced && enhanced.Lines.Count==1 && enhanced.Lines[0].Words.Count==3,"enhanced words");
 Check(enhanced.Lines[0].Words[1].StartMs==1500 && enhanced.Lines[0].Words[1].EndMs==2000,"precision word timing");
 Check(enhanced.Lines[0].Text=="Снова споём дальше","enhanced text reconstruction");
+var extended=LrcReader.Parse("[00:01.00]<00:01.00>One <00:04.00>long <00:08.00>line<00:12.00>");
+Check(extended.Lines[0].EndMs==12000 && extended.Lines[0].Words[^1].EndMs==12000,"explicit word end extends phrase");
 var shifted = LrcReader.Parse("[00:01.00]<00:01.00>hello <00:02.00>world\n[offset:500]");
 Check(shifted.Lines[0].Words[1].StartMs==2500,"word timing global offset");
 Check(KaraokeHighlightEngine.GetHighlightLength("Снова споём дальше", enhanced.Lines[0].Words, 1000, 5000, 0)==0,"initial word sweep");

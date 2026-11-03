@@ -110,7 +110,8 @@ public static partial class LrcReader
         for(int i=0;i<merged.Count;i++)
         {
             var line=merged[i];
-            line.EndMs=i+1<merged.Count?Math.Max(line.StartMs+1,merged[i+1].StartMs):Math.Max(line.StartMs+4000,durationMs);
+            int wordEnd=line.Words.Count>0?line.Words[^1].EndMs:0;
+            line.EndMs=i+1<merged.Count?Math.Max(line.StartMs+1,merged[i+1].StartMs):Math.Max(Math.Max(line.StartMs+4000,durationMs),wordEnd);
             for(int j=0;j<line.Words.Count;j++)
             {
                 var w=line.Words[j];

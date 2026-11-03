@@ -60,7 +60,8 @@ void Normalize(ParsedLyrics& data,int offset) {
     data.lines.swap(merged);
     for(size_t i=0;i<data.lines.size();++i){
         auto& line=data.lines[i];
-        const int end=i+1<data.lines.size()?data.lines[i+1].startMs:line.startMs+4000;
+        const int wordEnd = !line.words.empty() ? line.words.back().endMs : 0;
+        const int end=i+1<data.lines.size()?data.lines[i+1].startMs:std::max(line.startMs+4000, wordEnd);
         line.endMs=std::max(line.startMs+1,end);
         for(size_t j=0;j<line.words.size();++j){
             auto& word=line.words[j];

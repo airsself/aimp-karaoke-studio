@@ -20,6 +20,8 @@ int main(){
     check(enhanced.lines[0].words[0].startMs==1000 && enhanced.lines[0].words[0].endMs==1500,"word timing 1");
     check(enhanced.lines[0].words[1].startMs==1500 && enhanced.lines[0].words[1].endMs==2000,"word timing 2");
     check(enhanced.lines[0].text==L"Снова споём дальше","enhanced plain text");
+    auto extended=ParseLrc(L"[00:01.00]<00:01.00>One <00:04.00>long <00:08.00>line<00:12.00>\n");
+    check(extended.lines[0].endMs==12000 && extended.lines[0].words.back().endMs==12000,"explicit word end extends phrase");
     auto shifted=ParseLrc(L"[00:01.00]<00:01.00>Hello <00:02.00>world\n[offset:500]\n");
     check(shifted.lines[0].words[1].startMs==2500,"enhanced offset");
     std::cout<<"9 LRC parser scenarios passed\n";

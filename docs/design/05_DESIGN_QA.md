@@ -1,6 +1,6 @@
 # 05 — WPF design and precision karaoke QA
 
-Status: **implemented in source, CI build and tests must pass before shipping**.
+Status: **Windows CI build, C++/C# parser tests, and live AIMP 5.40 DLL/IPC/WPF startup verified in GitHub Actions. User playback/visual QA remains necessary.**
 
 | Test | Status |
 |---|---|
@@ -14,8 +14,8 @@ Status: **implemented in source, CI build and tests must pass before shipping**.
 | Unicode / emoji split boundaries | C# test authored |
 | Small viewport settings overlay | Code updated; screenshot pending |
 | Accessibility keyboard focus | Style updated; keyboard inspection pending |
-| WPF executable compiled on Windows | CI pending |
-| Native AIMP plugin compiled on Windows | CI pending |
-| Actual AIMP playback and capture | **Not run** — no interactive installed AIMP environment in this session |
+| WPF executable compiled on Windows | PASS — GitHub Actions |
+| Native AIMP plugin compiled on Windows | PASS — GitHub Actions |
+| Actual AIMP 5.40 playback, DLL and IPC connection, WPF window creation | PASS in CI using verified portable AIMP 5.40 x64; first-run wizard still limits full visual validation |
 
 No HTML prototype is described as a screenshot of the native WPF application. 
