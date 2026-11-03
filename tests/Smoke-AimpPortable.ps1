@@ -13,6 +13,10 @@ $report = [ordered]@{
   karaokeWindowCreated = $false
   uiAutomationConnectionFound = $false
   screenshotCaptured = $false
+  pluginDllLoaded = $false
+  aimpLoadedModules = @()
+  pluginInstallationPath = ""
+  aimpWindowVisible = $false
   note = "CI host may not provide an interactive desktop. Success is not equivalent to manual playback QA."
   error = ""
 }
@@ -38,8 +42,13 @@ try {
   [System.IO.Compression.ZipFile]::ExtractToDirectory($pack, $unpack)
   $addon = Join-Path $unpack "AimpKaraokeStudio"
   if (-not (Test-Path (Join-Path $addon "x64\AimpKaraokeStudio.dll"))) { throw "Plugin DLL not found in package" }
-  Copy-Item -Path $addon -Destination $pluginTarget -Recurse -Force
-  $wpfExe = Join-Path $pluginTarget "AimpKaraokeStudio\x64\KaraokeStudio.exe"
+  # The .aimppack has x64/ for the *installer*. Manual portable installs
+  # must copy the selected architecture's files into the actual plugin folder.
+  $pluginDir = Join-Path $pluginTarget "AimpKaraokeStudio"
+  New-Item -ItemType Directory -Path $pluginDir -Force | Out-Null
+  Copy-Item -Path (Join-Path $addon "x64\*") -Destination $pluginDir -Recurse -Force
+  $report.pluginInstallationPath = $pluginDir
+  $wpfExe = Join-Path $pluginDir "KaraokeStudio.exe"
 
   # Start player with a generated silent PCM WAV plus enhanced LRC sidecar.
   $wav = Join-Path $root "precision-smoke.wav"
@@ -64,7 +73,31 @@ try {
   if ($player.HasExited) { throw "AIMP process exited immediately with code $($player.ExitCode)" }
   $report.playerStarted = $true
   $playerPid = $player.Id
+  $report.aimpWindowVisible = $player.MainWindowHandle -ne [IntPtr]::Zero
+  try {
+    $modules = @(Get-Process -Id $playerPid -Module -ErrorAction Stop | ForEach-Object ModuleName)
+    $report.aimpLoadedModules = @($modules | Where-Object { $_ -like "*Karaoke*" -or $_ -like "*AIMP*" })
+    $report.pluginDllLoaded = @($modules | Where-Object { $_ -eq "AimpKaraokeStudio.dll" }).Count -gt 0
+  } catch {
+    Write-Warning "Could not enumerate AIMP process modules: $_"
+  }
+  # A screen grab is diagnostic only; CI service sessions may render blank.
+  try {
+    Add-Type -AssemblyName System.Windows.Forms
+    Add-Type -AssemblyName System.Drawing
+    $screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+    $bmp = [System.Drawing.Bitmap]::new([Math]::Min($screen.Width,1920),[Math]::Min($screen.Height,1080))
+    $graphics = [System.Drawing.Graphics]::FromImage($bmp)
+    try { $graphics.CopyFromScreen($screen.X,$screen.Y,0,0,$bmp.Size)
+      $bmp.Save((Join-Path $folder "aimp-startup.png"),[System.Drawing.Imaging.ImageFormat]::Png)
+      $report.screenshotCaptured = $true
+    } finally { $graphics.Dispose(); $bmp.Dispose() }
+  } catch { Write-Warning "CI screenshot unavailable: $_" }
   $pipeName = "AimpKaraokeStudio.$playerPid"
+  Write-Host "AIMP PID: $playerPid"
+  Write-Host "Player module: $($report.aimpLoadedModules -join ', ')"
+  Write-Host "Native DLL loaded: $($report.pluginDllLoaded)"
+  Write-Host "Manual plugin folder: $($report.pluginInstallationPath)"
   $connected = $false
   for($i=0;$i -lt 18;$i++){
     $p = [System.IO.Pipes.NamedPipeClientStream]::new(".", $pipeName, [System.IO.Pipes.PipeDirection]::InOut)
