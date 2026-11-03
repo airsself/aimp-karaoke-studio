@@ -1,0 +1,56 @@
+name: Publish v0.4.0 public installer
+
+on:
+  push:
+    paths:
+      - .github/workflows/publish-v0.4.0.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    name: Publish verified AIMP Karaoke Studio x64 package
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download previously verified Windows artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 41581612470 --repo "$GITHUB_REPOSITORY" --name "AIMP-Karaoke-Studio-x64-installer" --dir release
+          test -s release/AimpKaraokeStudio-x64.aimppack
+
+      - name: Verify SHA-256 and make ZIP alternative
+        shell: bash
+        run: |
+          echo "fbb14b2bf9315a0d42f653946a30dbf900391d76dfa6f3b4ca457cbef78aad25  release/AimpKaraokeStudio-x64.aimppack" | sha256sum -c -
+          cd release
+          sha256sum AimpKaraokeStudio-x64.aimppack > SHA256SUMS.txt
+          zip -q -0 "AIMP-Karaoke-Studio-v0.4-Windows-x64.zip" "AimpKaraokeStudio-x64.aimppack"
+          unzip -t -q "AIMP-Karaoke-Studio-v0.4-Windows-x64.zip"
+
+      - name: Publish direct, public download links on GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="v0.4.0"
+          assets=(
+            release/AimpKaraokeStudio-x64.aimppack
+            release/AIMP-Karaoke-Studio-v0.4-Windows-x64.zip
+            release/SHA256SUMS.txt
+          )
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" "${assets[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$tag" "${assets[@]}" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "e641efb825732c6118182332dc31e6caefc4e0a6" \
+              --title "AIMP Karaoke Studio v0.4 — Vocal Focus + Precision Karaoke" \
+              --notes "Windows x64 installer built and verified by GitHub Actions. Includes the native AIMP plugin, WPF karaoke renderer, Vocal Focus layout, and Enhanced LRC word-timed highlighting. Download the .aimppack to install in AIMP 5.40 x64. The ZIP is the same installer packaged for easier browser downloads. SHA-256: fbb14b2bf9315a0d42f653946a30dbf900391d76dfa6f3b4ca457cbef78aad25. Automated tests verify build, native DLL loading, Named Pipe connection, and WPF window creation on AIMP 5.40 x64. Full interactive usability still requires user testing."
+          fi
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json url,assets --jq '{url: .url, files: [.assets[].name]}'
