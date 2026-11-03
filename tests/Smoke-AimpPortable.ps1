@@ -63,8 +63,8 @@ try {
   Start-Sleep -Seconds 4
   if ($player.HasExited) { throw "AIMP process exited immediately with code $($player.ExitCode)" }
   $report.playerStarted = $true
-  $pid = $player.Id
-  $pipeName = "AimpKaraokeStudio.$pid"
+  $playerPid = $player.Id
+  $pipeName = "AimpKaraokeStudio.$playerPid"
   $connected = $false
   for($i=0;$i -lt 18;$i++){
     $p = [System.IO.Pipes.NamedPipeClientStream]::new(".", $pipeName, [System.IO.Pipes.PipeDirection]::InOut)
