@@ -16,14 +16,34 @@ public sealed record TranslationProviderOptions(
     string LibreTranslateApiKey = "",
     string DeepLApiKey = "")
 {
+    // Environment-only credentials: never serialized into settings.json.
+    public string AzureTranslatorKey { get; init; } = "";
+    public string AzureTranslatorRegion { get; init; } = "";
+    public string GoogleCloudApiKey { get; init; } = "";
+    public string GeminiApiKey { get; init; } = "";
+    public string GroqApiKey { get; init; } = "";
+    public string OpenRouterApiKey { get; init; } = "";
+    public string CloudflareApiToken { get; init; } = "";
+    public string CloudflareAccountId { get; init; } = "";
+
     public static TranslationProviderOptions FromEnvironment(string mode, string libreUrl)
         => new(mode, libreUrl,
             Environment.GetEnvironmentVariable("LIBRETRANSLATE_API_KEY") ?? "",
-            Environment.GetEnvironmentVariable("DEEPL_AUTH_KEY") ?? "");
+            Environment.GetEnvironmentVariable("DEEPL_AUTH_KEY") ?? "")
+        {
+            AzureTranslatorKey = Environment.GetEnvironmentVariable("AZURE_TRANSLATOR_KEY") ?? "",
+            AzureTranslatorRegion = Environment.GetEnvironmentVariable("AZURE_TRANSLATOR_REGION") ?? "",
+            GoogleCloudApiKey = Environment.GetEnvironmentVariable("GOOGLE_CLOUD_TRANSLATE_API_KEY") ?? "",
+            GeminiApiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY") ?? "",
+            GroqApiKey = Environment.GetEnvironmentVariable("GROQ_API_KEY") ?? "",
+            OpenRouterApiKey = Environment.GetEnvironmentVariable("OPENROUTER_API_KEY") ?? "",
+            CloudflareApiToken = Environment.GetEnvironmentVariable("CLOUDFLARE_API_TOKEN") ?? "",
+            CloudflareAccountId = Environment.GetEnvironmentVariable("CLOUDFLARE_ACCOUNT_ID") ?? ""
+        };
 }
 
 /// <summary>Request-scoped provider routing with circuit breaking and cancellation.</summary>
-internal sealed class TranslationProviderRouter
+internal sealed partial class TranslationProviderRouter
 {
     private readonly HttpClient _http;
     private readonly TranslationProviderOptions _options;
@@ -48,19 +68,42 @@ internal sealed class TranslationProviderRouter
 
     private static List<string> BuildOrder(TranslationProviderOptions options)
     {
-        if (options.Mode is not ("auto" or "mymemory" or "libre" or "deepl"))
+        // Google Cloud and Azure can charge over their free allowance: manual-only.
+        // Anonymous-only installs retain the same MyMemory behavior.
+        if (options.Mode is not ("auto" or "mymemory" or "libre" or "deepl"
+            or "azure" or "google" or "gemini" or "groq" or "openrouter" or "cloudflare"))
             throw new TranslationException("Неизвестный провайдер перевода.");
-        if (options.Mode == "libre" && string.IsNullOrWhiteSpace(options.LibreTranslateUrl))
-            throw new TranslationException("Укажите URL сервера LibreTranslate в настройках.");
-        if (options.Mode == "deepl" && string.IsNullOrWhiteSpace(options.DeepLApiKey))
-            throw new TranslationException("Для DeepL задайте переменную среды DEEPL_AUTH_KEY и перезапустите приложение.");
-        if (options.Mode == "mymemory") return ["mymemory"];
-        if (options.Mode == "libre") return ["libre"];
-        if (options.Mode == "deepl") return ["deepl"];
+
+        if (options.Mode != "auto")
+        {
+            bool configured = options.Mode switch
+            {
+                "mymemory" => true,
+                "libre" => !string.IsNullOrWhiteSpace(options.LibreTranslateUrl),
+                "deepl" => !string.IsNullOrWhiteSpace(options.DeepLApiKey),
+                "azure" => !string.IsNullOrWhiteSpace(options.AzureTranslatorKey),
+                "google" => !string.IsNullOrWhiteSpace(options.GoogleCloudApiKey),
+                "gemini" => !string.IsNullOrWhiteSpace(options.GeminiApiKey),
+                "groq" => !string.IsNullOrWhiteSpace(options.GroqApiKey),
+                "openrouter" => !string.IsNullOrWhiteSpace(options.OpenRouterApiKey),
+                "cloudflare" => !string.IsNullOrWhiteSpace(options.CloudflareApiToken)
+                    && !string.IsNullOrWhiteSpace(options.CloudflareAccountId),
+                _ => false
+            };
+            if (!configured)
+                throw new TranslationException("Источник " + DisplayName(options.Mode)
+                    + " не настроен. Проверьте URL или переменные среды (см. документацию).");
+            return [options.Mode];
+        }
 
         var order = new List<string>();
         if (!string.IsNullOrWhiteSpace(options.LibreTranslateUrl)) order.Add("libre");
         if (!string.IsNullOrWhiteSpace(options.DeepLApiKey)) order.Add("deepl");
+        if (!string.IsNullOrWhiteSpace(options.GeminiApiKey)) order.Add("gemini");
+        if (!string.IsNullOrWhiteSpace(options.GroqApiKey)) order.Add("groq");
+        if (!string.IsNullOrWhiteSpace(options.CloudflareApiToken) &&
+            !string.IsNullOrWhiteSpace(options.CloudflareAccountId)) order.Add("cloudflare");
+        if (!string.IsNullOrWhiteSpace(options.OpenRouterApiKey)) order.Add("openrouter");
         order.Add("mymemory");
         return order;
     }
@@ -78,6 +121,12 @@ internal sealed class TranslationProviderRouter
                 {
                     "libre" => await LibreTranslateAsync(text, source, ct),
                     "deepl" => await DeepLAsync(text, source, ct),
+                    "azure" => await AzureAsync(text, source, ct),
+                    "google" => await GoogleCloudAsync(text, source, ct),
+                    "gemini" => await GeminiAsync(text, source, ct),
+                    "groq" => await GroqAsync(text, source, ct),
+                    "openrouter" => await OpenRouterAsync(text, source, ct),
+                    "cloudflare" => await CloudflareAsync(text, source, ct),
                     _ => await MyMemoryAsync(text, source, ct)
                 };
                 if (string.IsNullOrWhiteSpace(translated))
@@ -110,6 +159,12 @@ internal sealed class TranslationProviderRouter
         "mymemory" => "MyMemory",
         "libre" => "LibreTranslate",
         "deepl" => "DeepL",
+        "azure" => "Azure Translator",
+        "google" => "Google Cloud Translation",
+        "gemini" => "Gemini",
+        "groq" => "Groq",
+        "openrouter" => "OpenRouter",
+        "cloudflare" => "Cloudflare Workers AI",
         _ => id
     };
 
