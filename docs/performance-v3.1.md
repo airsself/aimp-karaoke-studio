@@ -52,3 +52,29 @@ on a specific user machine:
   may still depend on rate limits or connectivity.
 - The 0.35 background cache produces a deliberately softer image, but the
   sharp original album cover uses its previous image source.
+
+
+## Observed CI results — 2026-11-04
+Official run: https://github.com/airsself/aimp-karaoke-studio/actions/runs/41819889332
+
+| Controlled benchmark (25,000 Enhanced-LRC ticks) | Original loop | Prepared loop |
+|---|---:|---:|
+| Elapsed time | 63.0 ms | 4.8 ms |
+| Allocated bytes | 20,142,616 | 0 |
+| Relative speed | 1x | 13.1x |
+
+The 30,000-progress-update WPF ViewModel test registered only 80
+actual highlighted/remaining text property changes and no unbound
+Progress change notifications.
+
+AIMP portable WPF process over a 6-second run:
+- CPU time: 1812 ms; 30.2% of one logical CPU core.
+- Working set: 155.7 MiB.
+- Private bytes: 77.8 MiB (up 10.5 MiB during this observation).
+- Thread count: 29; handle count: 685.
+- Seek 12000 ms, pause=1, resume=2, bilingual split and lyric finder: PASS.
+
+These reflect the GitHub Actions Windows machine with one synthetic
+song, not a before/after whole-app benchmark on identical user hardware.
+The older algorithm was measured inside the same benchmark process; the
+WPF memory and process CPU values have NO matching v3.0 baseline.

@@ -1,0 +1,60 @@
+name: Publish v3.1.0 Performance Optimization
+
+on:
+  push:
+    paths:
+      - .github/workflows/publish-v3.1.0.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    name: Publish v3.1.0 x64 installer and ZIP
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download tested Windows package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 41819889332 --repo "$GITHUB_REPOSITORY" --name "AIMP-Karaoke-Studio-x64-installer" --dir release
+          test -s release/AimpKaraokeStudio-x64.aimppack
+
+      - name: Verify hash, archive structure and produce ZIP alternative
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "c8b727c4663e69b7b0fd127d6b3008483985dd475b3993c1b8011834668f387e  release/AimpKaraokeStudio-x64.aimppack" | sha256sum -c -
+          unzip -l release/AimpKaraokeStudio-x64.aimppack | grep -F 'AimpKaraokeStudio/x64/AimpKaraokeStudio.dll'
+          unzip -l release/AimpKaraokeStudio-x64.aimppack | grep -F 'AimpKaraokeStudio/x64/KaraokeStudio.exe'
+          cd release
+          mv AimpKaraokeStudio-x64.aimppack AimpKaraokeStudio-v3.1.0-x64.aimppack
+          sha256sum AimpKaraokeStudio-v3.1.0-x64.aimppack > SHA256SUMS.txt
+          zip -q -0 AIMP-Karaoke-Studio-v3.1.0-Windows-x64.zip AimpKaraokeStudio-v3.1.0-x64.aimppack
+          unzip -t -q AIMP-Karaoke-Studio-v3.1.0-Windows-x64.zip
+
+      - name: Publish stable public download links
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="v3.1.0"
+          assets=(
+            release/AimpKaraokeStudio-v3.1.0-x64.aimppack
+            release/AIMP-Karaoke-Studio-v3.1.0-Windows-x64.zip
+            release/SHA256SUMS.txt
+          )
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" "${assets[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$tag" "${assets[@]}" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "4f3029f89f73403d8b3c5dfb59cbf3d58394c980" \
+              --title "AIMP Karaoke Studio v3.1 — performance and stability update" \
+              --notes "Performance-focused Windows x64 build for AIMP 5.40. Fixes UI stalls and high CPU/memory allocation by caching Unicode and Enhanced LRC word boundaries (25k updates benchmark: 63.0 ms / 20.14 MB before, 4.8 ms / 0 B after: 13.1x faster highlight loop). WPF view model updates only 80 lyric text changes over 30k sampled progress ticks. Adaptive 30Hz playback rendering with 150ms idle/300ms minimized intervals; cached low-resolution ambient artwork replaces a heavy full-window blur. Bilingual pane resizing avoids refreshing all lyrics on minor width changes. Translation cache JSON writes are batched and serialized off the UI thread, including cancellation flush. CI integration with official AIMP 5.40 x64: native DLL, Named Pipes, seek 12s, pause/resume, bilingual view and lyrics finder all passed. WPF sample at CI: CPU 30.2% one core, working set 155.7 MB; not comparable to unmeasured user machine. Existing v3 Lyrics Discovery, v2 translation, word-timed karaoke, settings and controls retained."
+          fi
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json url,assets --jq '{url:.url,files:[.assets[].name]}'
