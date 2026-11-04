@@ -71,8 +71,7 @@ func(e *Engine)Search(ctx context.Context,track model.Track,force bool)(model.Re
 	}
 	result:=model.Result{Best:best,Candidates:all,Diagnostic:"ok"}
 	if len(all)==0 {
-		if len(providerErrors)>0{result.Diagnostic=strings.Join(providerErrors,"; ")}
-		else {result.Diagnostic="not_found"}
+		if len(providerErrors)>0{result.Diagnostic=strings.Join(providerErrors,"; ")} else {result.Diagnostic="not_found"}
 	}
 	// A failed provider should not poison the negative cache: retry later.
 	if e.Cache!=nil && (best!=nil||len(providerErrors)==0){

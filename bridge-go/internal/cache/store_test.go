@@ -11,9 +11,13 @@ func TestPersistentTTLAndNegative(t *testing.T){
 	e,ok:=again.Get(track)
 	if !ok||e.Best==nil||e.Best.Content!="line"{t.Fatal("cache not persistent")}
 	missing:=model.Track{Artist:"Other",Title:"Missing"}
-	if err:=again.Put(missing,nil,10*time.Millisecond);err!=nil{t.Fatal(err)}
+	// Deterministic clock: Windows filesystem sync latency must not expire
+	// a negative entry before the first assertion.
+	start:=time.Now()
+	again.now=func()time.Time{return start}
+	if err:=again.Put(missing,nil,time.Minute);err!=nil{t.Fatal(err)}
 	if e,ok:=again.Get(missing);!ok||e.Best!=nil{t.Fatal("negative entry missing")}
-	time.Sleep(15*time.Millisecond)
+	again.now=func()time.Time{return start.Add(2*time.Minute)}
 	if _,ok:=again.Get(missing);ok{t.Fatal("expired negative cache was used")}
 	if Key(track)==Key(missing){t.Fatal("cache key collision")}
 }
