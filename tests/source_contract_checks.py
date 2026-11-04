@@ -36,6 +36,11 @@ checks={
 'bilingual UI toggle': 'TranslationButton' in xaml and 'SetTranslationVisible' in ui,
 'aligned bilingual row template': 'TranslationPaneWidth' in xaml and 'TranslationText' in xaml,
 'automatic translator with cache': (r/'app/Services/TranslationService.cs').exists() and 'BeginTranslation' in ui,
+'v3 lyrics search button': 'FindLyricsButton' in xaml and 'FindLyrics_Click' in ui,
+'v3 source-only discovery': (r/'app/Services/LyricsDiscoveryService.cs').exists(),
+'v3 manual sidecar save': (r/'app/Services/LyricsSidecarStore.cs').exists(),
+'v3 autosearch cancellation': 'CancelLyricsLookup' in ui and 'BeginAutomaticLyricsLookup' in ui,
+'v3 metadata safety': 'SetToAll' not in (r/'app/Services/LyricsSidecarStore.cs').read_text(),
 }
 for k,v in checks.items():
     if not v: raise AssertionError(k)

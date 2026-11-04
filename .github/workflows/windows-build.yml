@@ -31,6 +31,8 @@ jobs:
           dotnet run --project tests/LrcReaderTests/LrcReaderTests.csproj -c Release
           if ($LASTEXITCODE -ne 0) { throw 'Managed LRC tests failed' }
           dotnet run --project tests/TranslationTests/TranslationTests.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { throw 'Translation tests failed' }
+          dotnet run --project tests/LyricsDiscoveryTests/LyricsDiscoveryTests.csproj -c Release
           if ($LASTEXITCODE -ne 0) { throw 'Managed tests failed' }
           cmake -S tests -B build/parser -G "Visual Studio 17 2022" -A x64
           if ($LASTEXITCODE -ne 0) { throw 'Test configuration failed' }

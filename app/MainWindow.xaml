@@ -206,6 +206,13 @@
               <CheckBox x:Name="SmoothCheck" Content="Плавная прокрутка" Style="{StaticResource SettingCheck}" Click="SettingCheck_Click"/>
               <CheckBox x:Name="ProgressCheck" Content="Караоке-подсветка текста" Style="{StaticResource SettingCheck}" Click="SettingCheck_Click"/>
               <CheckBox x:Name="TopCheck" Content="Поверх других окон" Style="{StaticResource SettingCheck}" Click="SettingCheck_Click"/>
+              <TextBlock Text="ПОИСК ТЕКСТОВ" Style="{StaticResource SectionHeading}"/>
+              <CheckBox x:Name="AutoFindCheck" Content="Автопоиск отсутствующих текстов"
+                        Style="{StaticResource SettingCheck}" Click="SettingCheck_Click"/>
+              <CheckBox x:Name="LegacyBridgeCheck" Content="Сначала проверять локальный Lyrics Bridge"
+                        Style="{StaticResource SettingCheck}" Click="SettingCheck_Click"/>
+              <TextBlock Text="Автопоиск отправляет исполнителя и название внешним сервисам LRCLIB / lyrics.ovh. Существующие метаданные аудиофайлов не изменяются. Сохранение в .lrc — только по кнопке."
+                         Foreground="#9692A1" FontSize="10" TextWrapping="Wrap" Margin="0,6,0,0"/>
               <TextBlock Text="ПЕРЕВОД" Style="{StaticResource SectionHeading}"/>
               <TextBlock Text="Язык оригинала" Style="{StaticResource SmallText}" Margin="0,0,0,6"/>
               <ComboBox x:Name="TranslationSourceCombo" Height="30" Background="#24212A"
@@ -274,6 +281,9 @@
             <Button Content="A−" Style="{StaticResource OutlineButton}" ToolTip="Уменьшить текст (Ctrl+-)" Margin="0,0,7,0" Click="FontMinus_Click"/>
             <Button Content="A+" Style="{StaticResource OutlineButton}" ToolTip="Увеличить текст (Ctrl++)" Margin="0,0,7,0" Click="FontPlus_Click"/>
             <Button x:Name="FullscreenButton" Content="⛶" Style="{StaticResource OutlineButton}" ToolTip="Полный экран (F11)" Margin="0,0,7,0" Click="Fullscreen_Click"/>
+            <Button x:Name="FindLyricsButton" Content="Найти" Style="{StaticResource OutlineButton}"
+                    ToolTip="Найти текст в Legacy Bridge, LRCLIB и lyrics.ovh" Margin="0,0,7,0"
+                    Click="FindLyrics_Click"/>
             <Button Content="LRC" Style="{StaticResource OutlineButton}" ToolTip="Открыть локальный LRC" Margin="0" Click="OpenLrc_Click"/>
           </StackPanel>
         </Grid>

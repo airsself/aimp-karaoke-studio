@@ -1,4 +1,4 @@
-# AIMP Karaoke Studio v2.0 — Bilingual Lyrics + Auto Russian Translation
+# AIMP Karaoke Studio v3.0 — Lyrics Discovery + Bilingual Karaoke
 
 An AIMP 5.40 C++ plugin and a separate WPF 10 Windows lyrics window, styled to match the original AIMP dark UI.
 
@@ -9,6 +9,38 @@ An AIMP 5.40 C++ plugin and a separate WPF 10 Windows lyrics window, styled to m
 - Three lyrics modes (Reading, Karaoke, Stage), **Vocal Focus** layout, virtualized lyric text, inline karaoke fill, font scaling, smooth line scroll, full-screen, manual reading and live controls.
 - Offline embedded album artwork via AIMP AlbumArt (for PNG/JPEG encoded image container data up to 450 kB), asynchronous local cover fallback.
 - Windows configuration persistence, parser tests, build/package scripts and diagnostic logs.
+
+## Lyrics discovery and download (v3.0)
+
+The user-provided AIMP Lyrics Bridge 2.5.0 RC2 archive documents a localhost
+HTTP marker protocol. The Bridge provider EXE, CLI and third-party WebLyrics DLL
+are binary-only and are NOT redistributed by Karaoke Studio.
+
+Karaoke Studio searches:
+1. An already running old Lyrics Bridge on 127.0.0.1 ports 17321–17340,
+   using /lyrics with artist/title/album and the AIMPLB marker protocol.
+2. LRCLIB /api/get (exact metadata and duration), then /api/search.
+   Synchronized LRC is retained with line timestamps.
+3. lyrics.ovh as a plain-lyrics fallback when no good synchronized LRC exists.
+
+Click **Найти** in the footer to search, preview, apply and optionally
+**Сохранить LRC…** in a separate .lrc file. Fix artist/title manually where
+the AIMP metadata is incorrect. The original **LRC** button continues to
+open local files. New Settings switches allow turning off automatic
+missing-text searches and the old local Bridge adapter.
+
+Automatic lookup may populate missing text if AIMP and local LRC find none.
+The app doesn't auto-apply ambiguous matches. Successful matches are cached
+locally for 30 days at:
+%LOCALAPPDATA%/AimpKaraokeStudio/lyrics-cache-v3.json
+
+Existing audio files and tags are NEVER written by this feature. Only a
+user-selected .lrc sidecar can be saved. Overwrite confirmation is explicit.
+Automatic queries send artist/title to external online providers; disable
+the setting to opt out.
+
+Provider details, tests and old-code provenance are in
+docs/design/07_LYRICS_DISCOVERY_V3.md.
 
 ## Bilingual Lyrics (v2.0)
 

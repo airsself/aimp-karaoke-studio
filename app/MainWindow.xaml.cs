@@ -36,6 +36,11 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<LyricLineViewModel> _lines = [];
     private readonly PlaybackClock _clock = new();
     private readonly TranslationService _translationService = new();
+    private readonly LyricsDiscoveryService _lyricsDiscovery = new();
+    private CancellationTokenSource? _lyricsLookupCancel;
+    private LyricsTrack _currentTrack = new("", "", "", 0);
+    private string _currentFilePath = "";
+    private bool _searchDialogOpen;
     private CancellationTokenSource? _translationCancel;
     private int _translationSession;
     private bool _translationEnabled;
@@ -125,6 +130,8 @@ public partial class MainWindow : Window
         SmoothCheck.IsChecked = _settings.SmoothScroll;
         ProgressCheck.IsChecked = _settings.ShowProgress;
         TopCheck.IsChecked = _settings.AlwaysOnTop;
+        AutoFindCheck.IsChecked = _settings.AutoFindLyrics;
+        LegacyBridgeCheck.IsChecked = _settings.UseLegacyBridge;
         _ready = true;
         ApplyAccent();
         UpdateSettingsValues();
@@ -165,6 +172,7 @@ public partial class MainWindow : Window
         _pipe?.Dispose();
         _artworkCancel?.Cancel();
         _translationCancel?.Cancel();
+        CancelLyricsLookup();
         if (!_fullscreen && WindowState == WindowState.Normal)
         {
             _settings.WindowLeft = Left;
@@ -230,7 +238,11 @@ public partial class MainWindow : Window
         {
             case "track":
                 if (message.Generation < _generation) break;
+                CancelLyricsLookup();
                 _generation = message.Generation;
+                _currentTrack = new LyricsTrack(message.Artist ?? "", message.Title ?? "",
+                    message.Album ?? "", Math.Max(0, message.DurationMs));
+                _currentFilePath = message.FilePath ?? "";
                 _manualOverride = false;
                 TrackTitle.Text = string.IsNullOrWhiteSpace(message.Title) ? "Неизвестная композиция" : message.Title;
                 TrackArtist.Text = string.IsNullOrWhiteSpace(message.Album) ? message.Artist : $"{message.Artist} · {message.Album}";
@@ -259,9 +271,12 @@ public partial class MainWindow : Window
                     EmptyHeadline.Text = "Ошибка загрузки текста";
                     EmptyDescription.Text = message.Error;
                     EmptyPanel.Visibility = Visibility.Visible;
+                    BeginAutomaticLyricsLookup();
                     break;
                 }
                 SetLyrics(message.Lines, message.Synced, message.Source);
+                if (message.Lines.Count == 0) BeginAutomaticLyricsLookup();
+                else CancelLyricsLookup();
                 break;
             case "artwork":
                 if (message.Generation != _generation || string.IsNullOrWhiteSpace(message.ArtworkData)) break;
@@ -856,6 +871,9 @@ public partial class MainWindow : Window
         _settings.SmoothScroll = SmoothCheck.IsChecked == true;
         _settings.ShowProgress = ProgressCheck.IsChecked == true;
         _settings.AlwaysOnTop = TopCheck.IsChecked == true;
+        _settings.AutoFindLyrics = AutoFindCheck.IsChecked == true;
+        _settings.UseLegacyBridge = LegacyBridgeCheck.IsChecked == true;
+        if (!_settings.AutoFindLyrics) CancelLyricsLookup();
         Topmost = _settings.AlwaysOnTop;
         ApplyLineStyles();
     }
@@ -925,6 +943,112 @@ public partial class MainWindow : Window
         UpdateTargetScroll();
     }
 
+    private void CancelLyricsLookup()
+    {
+        _lyricsLookupCancel?.Cancel();
+        _lyricsLookupCancel = null;
+    }
+
+    // Run only after AIMP has finished its own lookup without usable lyrics.
+    // Never modify the audio file or its tags; discovered lyrics stay in a
+    // hashed local cache until the user explicitly chooses "Save LRC".
+    private void BeginAutomaticLyricsLookup()
+    {
+        if (!_settings.AutoFindLyrics || _manualOverride || _closing ||
+            string.IsNullOrWhiteSpace(_currentTrack.Artist) ||
+            string.IsNullOrWhiteSpace(_currentTrack.Title)) return;
+        CancelLyricsLookup();
+        var cancellation = new CancellationTokenSource();
+        _lyricsLookupCancel = cancellation;
+        int generation = _generation;
+        var track = _currentTrack;
+        EmptyPanel.Visibility = Visibility.Visible;
+        EmptyHeadline.Text = "Ищем текст в интернете…";
+        EmptyDescription.Text = "Legacy Bridge → LRCLIB → lyrics.ovh";
+        SourceText.Text = "Автопоиск";
+        _ = AutomaticLookupAsync(track, generation, cancellation);
+    }
+
+    private async Task AutomaticLookupAsync(
+        LyricsTrack track, int generation, CancellationTokenSource cancellation)
+    {
+        var token = cancellation.Token;
+        bool IsCurrent() => !token.IsCancellationRequested && !_closing &&
+            generation == _generation && !_manualOverride &&
+            ReferenceEquals(_lyricsLookupCancel, cancellation);
+        try
+        {
+            var outcome = await _lyricsDiscovery.SearchAsync(
+                track, _settings.UseLegacyBridge, false, token);
+            if (!IsCurrent() || _lines.Count > 0) return;
+            var candidate = outcome.BestAutomatic;
+            if (candidate is null)
+            {
+                EmptyHeadline.Text = "Текст автоматически не найден";
+                EmptyDescription.Text = outcome.Diagnostic + " Нажмите «Найти» для выбора вручную.";
+                SourceText.Text = "Нет текста";
+                return;
+            }
+            var (lines, synced) = LrcReader.Parse(candidate.Content, _durationMs);
+            if (lines.Count == 0) return;
+            _manualOverride = true; // Do not let late AIMP callbacks erase this lookup.
+            SetLyrics(lines, synced, "Найдено: " + candidate.Source);
+            try { await _lyricsDiscovery.RememberAsync(track, candidate, token); }
+            catch (OperationCanceledException) { }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception error)
+        {
+            if (!IsCurrent()) return;
+            SourceText.Text = "Ошибка автопоиска";
+            EmptyHeadline.Text = "Не удалось найти текст";
+            EmptyDescription.Text = "Проверьте подключение или нажмите «Найти».";
+            StudioLog.Error("Automatic lyrics lookup", error);
+        }
+        finally
+        {
+            if (ReferenceEquals(_lyricsLookupCancel, cancellation))
+                _lyricsLookupCancel = null;
+            cancellation.Dispose();
+        }
+    }
+
+    private async void FindLyrics_Click(object sender, RoutedEventArgs e)
+    {
+        if (_searchDialogOpen) return;
+        CancelLyricsLookup();
+        _searchDialogOpen = true;
+        try
+        {
+            var dialog = new LyricsSearchWindow(_lyricsDiscovery, _currentTrack,
+                _currentFilePath, _settings.UseLegacyBridge) { Owner = this };
+            bool? result = dialog.ShowDialog();
+            _settings.UseLegacyBridge = dialog.UseLegacyBridge;
+            LegacyBridgeCheck.IsChecked = dialog.UseLegacyBridge;
+            if (result != true || dialog.SelectedLyrics is not { } selected) return;
+            var (lines, synced) = LrcReader.Parse(selected.Content, _durationMs);
+            if (lines.Count == 0)
+            {
+                MessageBox.Show(this, "В выбранном тексте нет строк.", "Поиск Lyrics",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            _manualOverride = true;
+            SetLyrics(lines, synced, dialog.SavedSidecar
+                ? "Сохранён LRC · " + selected.Source : "Найдено · " + selected.Source);
+            try { await _lyricsDiscovery.RememberAsync(dialog.SelectedTrack,
+                selected, CancellationToken.None); }
+            catch (Exception error) { StudioLog.Error("Lyrics search cache", error); }
+        }
+        catch (Exception error)
+        {
+            MessageBox.Show(this, "Поиск текста завершился с ошибкой: " + error.Message,
+                "Lyrics", MessageBoxButton.OK, MessageBoxImage.Warning);
+            StudioLog.Error("Lyrics search window", error);
+        }
+        finally { _searchDialogOpen = false; }
+    }
+
     private void OpenLrc_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog { Title = "Открыть LRC", Filter = "LRC subtitles (*.lrc)|*.lrc|Text (*.txt)|*.txt", CheckFileExists = true };
@@ -933,6 +1057,7 @@ public partial class MainWindow : Window
         {
             var (lines, synced) = LrcReader.Read(dialog.FileName, _durationMs);
             if (lines.Count == 0) { MessageBox.Show(this, "В файле нет строк текста.", "LRC", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+            CancelLyricsLookup();
             _manualOverride = true;
             if (_demo)
             {
@@ -959,6 +1084,7 @@ public partial class MainWindow : Window
         else if (e.Key == Key.Escape && _fullscreen) { ToggleFullscreen(); e.Handled = true; }
         else if (e.Key == Key.Escape && _settingsOpen) { ToggleSettings(false); e.Handled = true; }
         else if (e.Key == Key.Space) { Play_Click(sender, new RoutedEventArgs()); e.Handled = true; }
+        else if (ctrl && e.Key == Key.F) { FindLyrics_Click(sender, new RoutedEventArgs()); e.Handled = true; }
         else if (ctrl && (e.Key == Key.OemPlus || e.Key == Key.Add)) { AdjustFont(2); e.Handled = true; }
         else if (ctrl && (e.Key == Key.OemMinus || e.Key == Key.Subtract)) { AdjustFont(-2); e.Handled = true; }
         else if (alt && e.Key == Key.Left) { AdjustOffset(-100); e.Handled = true; }

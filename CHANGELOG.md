@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.0.0 — Lyrics Discovery / Lyrics Bridge integration (2026-11-04)
+
+- Integrate the protocol of AIMP Lyrics Bridge 2.5.0 RC2 for localhost lookup.
+- Standalone LRCLIB exact/search provider with confidence and duration match;
+  lyrics.ovh fallback for plain, unsynchronized lyrics.
+- Automatically search for missing lyrics without overriding existing text.
+- WPF native finder window: edit artist/title, select, preview, apply, Save LRC.
+- Cache successful lookups (30-day TTL), cancel outdated search on track change.
+- Saving only a separate .lrc file and NEVER editing audio metadata/tags.
+- Retain bilingual Russian translation, Enhanced LRC highlighting and transport.
+- Deterministic mock HTTP, legacy protocol and audio-integrity tests.
+
+
 ## 2.0.0 — Bilingual Lyrics / auto Russian translation (2026-11-04)
 
 - Add a toolbar toggle splitting the lyric canvas into original and Russian columns.
