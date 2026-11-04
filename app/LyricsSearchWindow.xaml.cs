@@ -51,12 +51,22 @@ public partial class LyricsSearchWindow : Window
     private void SearchWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         _closed = true;
-        _cancel?.Cancel();
+        // A completed lookup has already cleared its token in finally.
+        // The active lookup owns disposal after its asynchronous work unwinds.
+        var running = _cancel;
+        _cancel = null;
+        running?.Cancel();
     }
 
     private async Task SearchNowAsync()
     {
-        _cancel?.Cancel();
+        if (_closed) return;
+        // Only the still-running lookup may be cancelled. Completed sources
+        // are cleared in finally before being disposed, so repeating search
+        // or applying a result never calls Cancel on a disposed source.
+        var previous = _cancel;
+        _cancel = null;
+        previous?.Cancel();
         var tokenSource = new CancellationTokenSource();
         _cancel = tokenSource;
         var token = tokenSource.Token;
@@ -90,7 +100,14 @@ public partial class LyricsSearchWindow : Window
         }
         finally
         {
-            if (!_closed && ReferenceEquals(_cancel, tokenSource)) SearchButton.IsEnabled = true;
+            // SearchNowAsync alone owns tokenSource.Dispose(). Invalidate the
+            // shared reference BEFORE disposal. Closing/applying the dialog and
+            // starting another lookup cannot see an already disposed source.
+            if (ReferenceEquals(_cancel, tokenSource))
+            {
+                _cancel = null;
+                if (!_closed) SearchButton.IsEnabled = true;
+            }
             tokenSource.Dispose();
         }
     }
