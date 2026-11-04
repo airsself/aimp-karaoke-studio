@@ -1,0 +1,62 @@
+name: Publish v4.1.1 Lyrics Apply fix
+
+on:
+  push:
+    paths:
+      - .github/workflows/publish-v4.1.1.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    name: Publish v4.1.1 x64 installer and ZIP
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download tested Windows package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 41832880858 --repo "$GITHUB_REPOSITORY" --name "AIMP-Karaoke-Studio-x64-installer" --dir release
+          test -s release/AimpKaraokeStudio-x64.aimppack
+
+      - name: Verify hash, archive structure and produce ZIP alternative
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "e5513bc8db5e77757af707f39319c17ee884b594f96846c227b556e83b6df138  release/AimpKaraokeStudio-x64.aimppack" | sha256sum -c -
+          unzip -l release/AimpKaraokeStudio-x64.aimppack | grep -F 'AimpKaraokeStudio/x64/AimpKaraokeStudio.dll'
+          unzip -l release/AimpKaraokeStudio-x64.aimppack | grep -F 'AimpKaraokeStudio/x64/KaraokeStudio.exe'
+          unzip -l release/AimpKaraokeStudio-x64.aimppack | grep -F 'AimpKaraokeStudio/x64/KaraokeBridge.exe'
+          unzip -l release/AimpKaraokeStudio-x64.aimppack | grep -F 'AimpKaraokeStudio/x64/bridge.config.json'
+          cd release
+          mv AimpKaraokeStudio-x64.aimppack AimpKaraokeStudio-v4.1.1-x64.aimppack
+          sha256sum AimpKaraokeStudio-v4.1.1-x64.aimppack > SHA256SUMS.txt
+          zip -q -0 AIMP-Karaoke-Studio-v4.1.1-Windows-x64.zip AimpKaraokeStudio-v4.1.1-x64.aimppack
+          unzip -t -q AIMP-Karaoke-Studio-v4.1.1-Windows-x64.zip
+
+      - name: Publish stable public download links
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="v4.1.1"
+          assets=(
+            release/AimpKaraokeStudio-v4.1.1-x64.aimppack
+            release/AIMP-Karaoke-Studio-v4.1.1-Windows-x64.zip
+            release/SHA256SUMS.txt
+          )
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" "${assets[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$tag" "${assets[@]}" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "e503ec2c197b5d3879a53d55284d87e522b8a003" \
+              --title "AIMP Karaoke Studio v4.1.1 — Lyrics Apply Fix" \
+              --notes "Patch for AIMP Karaoke Studio v4.1 Go Bridge edition. Fixes the Windows dialog error: after selecting a lyrics variant and clicking Применить (Apply), ObjectDisposedException occurred because LyricsSearchWindow disposed the completed CancellationTokenSource but kept a reference; window close then called Cancel on the disposed source. Fixed the active search ownership and clears shared CTS before disposal, including retry and closing during lookup. New real WPF regression test performs search, retry, selects a result, clicks Apply, and closes with a pending search. GitHub Actions run 41832880858 passed: WPF regression, Go tests, native and managed builds, installation archive verification, live AIMP 5.40 seek/pause/resume, bilingual mode, Finder UI, Go Bridge health and batch action registration. No changes to networking providers, native metadata safety, LRC parsing or other user settings. Install on Windows x64; back up audio files before native batch tag-writing."
+          fi
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json url,assets --jq '{url:.url,files:[.assets[].name]}'

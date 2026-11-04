@@ -1,4 +1,4 @@
-# AIMP Karaoke Studio v4.1 — open-source Go Lyrics Bridge
+# AIMP Karaoke Studio v4.1.1 — Go Bridge and Lyrics Apply fix
 
 An AIMP 5.40 C++ plugin and a separate WPF 10 Windows lyrics window, styled to match the original AIMP dark UI.
 

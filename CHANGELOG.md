@@ -1,5 +1,20 @@
 # Changelog
 
+## 4.1.1 — Fix applying a selected lyrics result
+
+- Fix WPF search dialog's disposed CancellationTokenSource reference.
+  Previously, successful search disposed the CTS without clearing the
+  shared field; Apply set DialogResult=true, which closed the dialog
+  and called Cancel() on the already-disposed CTS.
+- Clear the shared reference BEFORE disposing a completed lookup.
+  The active search task remains sole owner of the source lifetime.
+- Close and repeat-search cancel only the current in-flight lookup.
+- Add real Windows WPF dialog regression covering first search,
+  repeated search, selection -> Apply and closing during an active request.
+- Keep v4.1 Go Bridge, batch commands, word-timed lyrics, translation,
+  performance optimizations and metadata writer unchanged.
+
+
 ## 4.1.0 — Open Go Bridge Server with independent modules
 
 - Add a clean-room Go 1.23.2 source implementation of the documented
