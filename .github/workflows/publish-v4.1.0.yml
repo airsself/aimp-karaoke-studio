@@ -1,0 +1,62 @@
+name: Publish v4.1.0 Open Source Go Bridge
+
+on:
+  push:
+    paths:
+      - .github/workflows/publish-v4.1.0.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    name: Publish v4.1.0 x64 installer and ZIP
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download tested Windows package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 41829722943 --repo "$GITHUB_REPOSITORY" --name "AIMP-Karaoke-Studio-x64-installer" --dir release
+          test -s release/AimpKaraokeStudio-x64.aimppack
+
+      - name: Verify hash, archive structure and produce ZIP alternative
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "a56abb1e0f443ca32e051957c64edb27edea2f2edd98831e60ee58f3c7b82d98  release/AimpKaraokeStudio-x64.aimppack" | sha256sum -c -
+          unzip -l release/AimpKaraokeStudio-x64.aimppack | grep -F 'AimpKaraokeStudio/x64/AimpKaraokeStudio.dll'
+          unzip -l release/AimpKaraokeStudio-x64.aimppack | grep -F 'AimpKaraokeStudio/x64/KaraokeStudio.exe'
+          unzip -l release/AimpKaraokeStudio-x64.aimppack | grep -F 'AimpKaraokeStudio/x64/KaraokeBridge.exe'
+          unzip -l release/AimpKaraokeStudio-x64.aimppack | grep -F 'AimpKaraokeStudio/x64/bridge.config.json'
+          cd release
+          mv AimpKaraokeStudio-x64.aimppack AimpKaraokeStudio-v4.1.0-x64.aimppack
+          sha256sum AimpKaraokeStudio-v4.1.0-x64.aimppack > SHA256SUMS.txt
+          zip -q -0 AIMP-Karaoke-Studio-v4.1.0-Windows-x64.zip AimpKaraokeStudio-v4.1.0-x64.aimppack
+          unzip -t -q AIMP-Karaoke-Studio-v4.1.0-Windows-x64.zip
+
+      - name: Publish stable public download links
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="v4.1.0"
+          assets=(
+            release/AimpKaraokeStudio-v4.1.0-x64.aimppack
+            release/AIMP-Karaoke-Studio-v4.1.0-Windows-x64.zip
+            release/SHA256SUMS.txt
+          )
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" "${assets[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$tag" "${assets[@]}" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "f6a97532364599617b0ead29f2b2bef1963d9680" \
+              --title "AIMP Karaoke Studio v4.1 — Open-Source Go Lyrics Bridge" \
+              --notes "Windows x64, AIMP 5.40. The proprietary v2.5 Bridge EXE and CLI were inspected ONLY as a binary protocol reference, not decompiled or redistributed. NEW MIT-licensed Go 1.23.2 Lyrics Bridge built from public source in bridge-go/ and packaged as KaraokeBridge.exe. Independent testable modules: HTTP API (legacy /lyrics markers and new /api/v1/search JSON), provider adapters (LRCLIB exact/search and lyrics.ovh), scoring, TTL disk cache, Enhanced LRC parser, typed configuration, lookup engine and parent watchdog. WPF launches and manages Go server. Legacy RC2 native batch hotkeys, safe per-tag Lyrics changes, pause/seek, word-timed karaoke and Russian translation unchanged. GitHub Actions 41829722943: go test all 7 tested Go packages and go vet PASSED; Windows C++ and WPF builds PASSED; AIMP x64 test confirmed Go /healthz returned engine=go 4.1, legacy listener available, AIMP batch actions registered, seek/pause/resume, bilingual WPF and Finder passed. No Bandcamp/SongLyrics binary-only scrapers or unknown private CLI endpoints reproduced. Back up audio files before first real batch tag-write; interactive library QA still required."
+          fi
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json url,assets --jq '{url:.url,files:[.assets[].name]}'
