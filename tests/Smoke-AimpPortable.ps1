@@ -268,7 +268,7 @@ try {
       for($trial=0;$trial -lt 16;$trial++){
         Start-Sleep -Milliseconds 350
         $dialog = [System.Windows.Automation.AutomationElement]::RootElement.FindFirst(
-          [System.Windows.Automation.TreeScope]::Children, $windowCondition)
+          [System.Windows.Automation.TreeScope]::Descendants, $windowCondition)
         if($null -ne $dialog){break}
       }
       $report.lyricsSearchDialogVerified = $null -ne $dialog
