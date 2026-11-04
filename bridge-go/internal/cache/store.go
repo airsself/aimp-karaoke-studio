@@ -14,8 +14,8 @@ import(
 	"github.com/airsself/aimp-karaoke-studio/bridge-go/internal/model"
 )
 type Entry struct{
-	Best *model.Candidate \`json:"best,omitempty"\`
-	ExpiresAt time.Time \`json:"expires_at"\`
+	Best *model.Candidate `json:"best,omitempty"`
+	ExpiresAt time.Time `json:"expires_at"`
 }
 type Store struct{
 	mu sync.RWMutex

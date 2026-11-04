@@ -10,20 +10,20 @@ import (
 	"strings"
 )
 
-type Word struct {AtMS int \`json:"at_ms"\`; Text string \`json:"text"\`}
+type Word struct {AtMS int `json:"at_ms"`; Text string `json:"text"`}
 type Line struct {
-	AtMS int \`json:"at_ms"\`
-	Text string \`json:"text"\`
-	Words []Word \`json:"words,omitempty"\`
+	AtMS int `json:"at_ms"`
+	Text string `json:"text"`
+	Words []Word `json:"words,omitempty"`
 }
 type Document struct {
-	Lines []Line \`json:"lines"\`
-	Synced bool \`json:"synced"\`
-	OffsetMS int \`json:"offset_ms"\`
+	Lines []Line `json:"lines"`
+	Synced bool `json:"synced"`
+	OffsetMS int `json:"offset_ms"`
 }
-var timeTag=regexp.MustCompile(\`^\[(\d{1,3}):(\d{2})(?:[.](\d{1,3}))?\]\`)
-var wordTag=regexp.MustCompile(\`<(\d{1,3}):(\d{2})(?:[.](\d{1,3}))?>\`)
-var offsetTag=regexp.MustCompile(\`(?i)^\[offset:([+-]?\d+)\]$\`)
+var timeTag=regexp.MustCompile(`^\[(\d{1,3}):(\d{2})(?:[.](\d{1,3}))?\]`)
+var wordTag=regexp.MustCompile(`<(\d{1,3}):(\d{2})(?:[.](\d{1,3}))?>`)
+var offsetTag=regexp.MustCompile(`(?i)^\[offset:([+-]?\d+)\]$`)
 func stamp(groups []string) (int,bool) {
 	m,me:=strconv.Atoi(groups[1]); s,se:=strconv.Atoi(groups[2])
 	if me!=nil||se!=nil||s>59{return 0,false}

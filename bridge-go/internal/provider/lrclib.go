@@ -13,13 +13,13 @@ import (
 type LRCLIB struct{Client *Client; BaseURL string}
 func(p LRCLIB)Name()string{return "lrclib"}
 type lrcRow struct {
-	Artist string \`json:"artistName"\`
-	Title string \`json:"trackName"\`
-	Album string \`json:"albumName"\`
-	Duration float64 \`json:"duration"\`
-	Synced string \`json:"syncedLyrics"\`
-	Plain string \`json:"plainLyrics"\`
-	Instrumental bool \`json:"instrumental"\`
+	Artist string `json:"artistName"`
+	Title string `json:"trackName"`
+	Album string `json:"albumName"`
+	Duration float64 `json:"duration"`
+	Synced string `json:"syncedLyrics"`
+	Plain string `json:"plainLyrics"`
+	Instrumental bool `json:"instrumental"`
 }
 func(p LRCLIB)Search(ctx context.Context,t model.Track)([]model.Candidate,error){
 	base:=strings.TrimRight(p.BaseURL,"/")

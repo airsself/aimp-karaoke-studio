@@ -12,27 +12,27 @@ import (
 )
 
 type Config struct {
-	ConfigVersion int \`json:"config_version"\`
-	Listen string \`json:"listen"\`
-	ClientIdentity string \`json:"client_identity"\`
-	ProviderOrder []string \`json:"provider_order"\`
-	LRCLIBEnabled bool \`json:"lrclib_enabled"\`
-	LRCLIBBaseURL string \`json:"lrclib_base_url"\`
-	LyricsOVHEnabled bool \`json:"lyrics_ovh_enabled"\`
-	LyricsOVHBaseURL string \`json:"lyrics_ovh_base_url"\`
-	RequestTimeoutSeconds int \`json:"request_timeout_seconds"\`
-	RetryCount int \`json:"retry_count"\`
-	RetryBackoffMS int \`json:"retry_backoff_ms"\`
-	MinRequestIntervalMS int \`json:"min_request_interval_ms"\`
-	MinMatchScore float64 \`json:"min_match_score"\`
-	EarlyAcceptScore float64 \`json:"early_accept_score"\`
-	PreferSynced bool \`json:"prefer_synced"\`
-	FallbackToPlain bool \`json:"fallback_to_plain"\`
-	CacheTTLHours int \`json:"cache_ttl_hours"\`
-	NegativeCacheTTLHours int \`json:"negative_cache_ttl_hours"\`
-	CacheMaxEntries int \`json:"cache_max_entries"\`
-	CacheDir string \`json:"cache_dir"\`
-	MaxLyricsBytes int \`json:"max_lyrics_bytes"\`
+	ConfigVersion int `json:"config_version"`
+	Listen string `json:"listen"`
+	ClientIdentity string `json:"client_identity"`
+	ProviderOrder []string `json:"provider_order"`
+	LRCLIBEnabled bool `json:"lrclib_enabled"`
+	LRCLIBBaseURL string `json:"lrclib_base_url"`
+	LyricsOVHEnabled bool `json:"lyrics_ovh_enabled"`
+	LyricsOVHBaseURL string `json:"lyrics_ovh_base_url"`
+	RequestTimeoutSeconds int `json:"request_timeout_seconds"`
+	RetryCount int `json:"retry_count"`
+	RetryBackoffMS int `json:"retry_backoff_ms"`
+	MinRequestIntervalMS int `json:"min_request_interval_ms"`
+	MinMatchScore float64 `json:"min_match_score"`
+	EarlyAcceptScore float64 `json:"early_accept_score"`
+	PreferSynced bool `json:"prefer_synced"`
+	FallbackToPlain bool `json:"fallback_to_plain"`
+	CacheTTLHours int `json:"cache_ttl_hours"`
+	NegativeCacheTTLHours int `json:"negative_cache_ttl_hours"`
+	CacheMaxEntries int `json:"cache_max_entries"`
+	CacheDir string `json:"cache_dir"`
+	MaxLyricsBytes int `json:"max_lyrics_bytes"`
 }
 
 func Default() Config {
