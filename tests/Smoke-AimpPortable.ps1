@@ -260,7 +260,7 @@ try {
       $findArgs = @("-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
                     "-File", $scriptPath, "-WindowHandle", $renderer.MainWindowHandle.ToInt64(),
                     "-LogPath", $finderLog)
-      $finderWorker = Start-Process -FilePath "powershell.exe" -ArgumentList $findArgs -WindowStyle Hidden -PassThru
+      $finderWorker = Start-Process -FilePath "pwsh.exe" -ArgumentList $findArgs -WindowStyle Hidden -PassThru
       $dialog = $null
       $windowCondition = [System.Windows.Automation.PropertyCondition]::new(
         [System.Windows.Automation.AutomationElement]::NameProperty,
