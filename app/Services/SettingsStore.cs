@@ -5,7 +5,7 @@ namespace KaraokeStudio.Services;
 
 public sealed class StudioSettings
 {
-    public int SchemaVersion { get; set; } = 6;
+    public int SchemaVersion { get; set; } = 7;
     public bool AutoFindLyrics { get; set; } = true;
     public bool UseLegacyBridge { get; set; } = true;
     public bool TranslationEnabled { get; set; }
@@ -53,7 +53,8 @@ public static class SettingsStore
                     }
                     if (existing.SchemaVersion < 5) existing.SchemaVersion = 5;
                     if (existing.SchemaVersion < 6) existing.SchemaVersion = 6;
-                    if (existing.TranslationProvider is not ("auto" or "mymemory" or "libre" or "deepl"))
+                    if (existing.SchemaVersion < 7) existing.SchemaVersion = 7;
+                    if (existing.TranslationProvider is not ("auto" or "mymemory" or "libre" or "deepl" or "azure" or "google" or "gemini" or "groq" or "openrouter" or "cloudflare"))
                         existing.TranslationProvider = "auto";
                     return existing;
                 }
