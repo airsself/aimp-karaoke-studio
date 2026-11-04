@@ -42,6 +42,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Built-in Lyrics Bridge tests failed' }
           dotnet run --project tests/LyricsDiscoveryTests/LyricsDiscoveryTests.csproj -c Release
           if ($LASTEXITCODE -ne 0) { throw 'Lyrics discovery tests failed' }
+          dotnet run --project tests/LyricsApplyRegressionTests/LyricsApplyRegressionTests.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { throw 'Lyrics Apply WPF dialog regression failed' }
           dotnet run --project tests/HighlightPerformanceTests/HighlightPerformanceTests.csproj -c Release
           if ($LASTEXITCODE -ne 0) { throw 'Highlight hot-path benchmark failed' }
           dotnet run --project tests/WpfViewModelTests/WpfViewModelTests.csproj -c Release
