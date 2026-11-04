@@ -1,0 +1,60 @@
+name: Publish v3.0.0 Lyrics Discovery
+
+on:
+  push:
+    paths:
+      - .github/workflows/publish-v3.0.0.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    name: Publish v3.0.0 x64 installer and ZIP
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download tested Windows package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 41789527495 --repo "$GITHUB_REPOSITORY" --name "AIMP-Karaoke-Studio-x64-installer" --dir release
+          test -s release/AimpKaraokeStudio-x64.aimppack
+
+      - name: Verify hash, archive structure and produce ZIP alternative
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "853315ce4b026b2f03435cb5857d40c6ec8672ea38c31396de234f19dec3ee13  release/AimpKaraokeStudio-x64.aimppack" | sha256sum -c -
+          unzip -l release/AimpKaraokeStudio-x64.aimppack | grep -F 'AimpKaraokeStudio/x64/AimpKaraokeStudio.dll'
+          unzip -l release/AimpKaraokeStudio-x64.aimppack | grep -F 'AimpKaraokeStudio/x64/KaraokeStudio.exe'
+          cd release
+          mv AimpKaraokeStudio-x64.aimppack AimpKaraokeStudio-v3.0.0-x64.aimppack
+          sha256sum AimpKaraokeStudio-v3.0.0-x64.aimppack > SHA256SUMS.txt
+          zip -q -0 AIMP-Karaoke-Studio-v3.0.0-Windows-x64.zip AimpKaraokeStudio-v3.0.0-x64.aimppack
+          unzip -t -q AIMP-Karaoke-Studio-v3.0.0-Windows-x64.zip
+
+      - name: Publish stable public download links
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="v3.0.0"
+          assets=(
+            release/AimpKaraokeStudio-v3.0.0-x64.aimppack
+            release/AIMP-Karaoke-Studio-v3.0.0-Windows-x64.zip
+            release/SHA256SUMS.txt
+          )
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" "${assets[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$tag" "${assets[@]}" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "faf6855fc44575e67807c3bd82ba8c55e2b8c6a7" \
+              --title "AIMP Karaoke Studio v3.0 — Lyrics Discovery, Bridge compatibility and safe LRC download" \
+              --notes "Windows x64 / AIMP 5.40. Added source-code Lyrics Discovery engine: local installed AIMP Lyrics Bridge 2.5.0 HTTP marker protocol, LRCLIB exact/search with synchronized LRC priority and lyrics.ovh plain-text fallback. Automatically fills missing texts; manual Find button previews/chooses candidates, Apply and Save .lrc are available. No audio metadata is edited: downloaded lyrics are saved to separate sidecars only on explicit request, preserving all ID3/FLAC tags. Original old Bridge server EXE, CLI and third-party WebLyrics DLL are NOT redistributed; if no existing Bridge is running, direct LRCLIB and lyrics.ovh work independently. v2 bilingual Russian translation, Enhanced LRC and transport remain functional. Verified CI: 17 discovery/cache/sidecar tests, 34 source guards, compiled DLL+WPF, AIMP 5.40 startup and pipes, pause/resume, seek. Finder visible in real WPF screenshot; external live provider and installed Legacy Bridge services require user testing."
+          fi
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json url,assets --jq '{url:.url,files:[.assets[].name]}'
