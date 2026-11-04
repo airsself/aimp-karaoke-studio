@@ -32,6 +32,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Managed LRC tests failed' }
           dotnet run --project tests/TranslationTests/TranslationTests.csproj -c Release
           if ($LASTEXITCODE -ne 0) { throw 'Translation tests failed' }
+          dotnet run --project tests/EmbeddedBridgeTests/EmbeddedBridgeTests.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { throw 'Built-in Lyrics Bridge tests failed' }
           dotnet run --project tests/LyricsDiscoveryTests/LyricsDiscoveryTests.csproj -c Release
           if ($LASTEXITCODE -ne 0) { throw 'Lyrics discovery tests failed' }
           dotnet run --project tests/HighlightPerformanceTests/HighlightPerformanceTests.csproj -c Release

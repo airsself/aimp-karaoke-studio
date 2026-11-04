@@ -37,6 +37,7 @@ public partial class MainWindow : Window
     private readonly PlaybackClock _clock = new();
     private readonly TranslationService _translationService = new();
     private readonly LyricsDiscoveryService _lyricsDiscovery = new();
+    private EmbeddedLyricsBridge? _embeddedLyricsBridge;
     private CancellationTokenSource? _lyricsLookupCancel;
     private LyricsTrack _currentTrack = new("", "", "", 0);
     private string _currentFilePath = "";
@@ -168,6 +169,15 @@ public partial class MainWindow : Window
         UpdateViewportPadding();
         UpdateTranslationLayout();
         if (_demo) StartDemo(); else _pipe?.Start();
+        try
+        {
+            // AIMP's integrated hotkeys and batch actions use this loopback Bridge.
+            _embeddedLyricsBridge = new EmbeddedLyricsBridge(_lyricsDiscovery);
+            if (!_embeddedLyricsBridge.Start())
+                StudioLog.Error("Embedded bridge startup",
+                    new InvalidOperationException("No available loopback port in 17321–17340"));
+        }
+        catch (Exception error) { StudioLog.Error("Embedded bridge startup", error); }
         _frames.Start();
     }
 
@@ -175,6 +185,8 @@ public partial class MainWindow : Window
     {
         _closing = true;
         _frames.Stop();
+        _embeddedLyricsBridge?.Dispose();
+        _embeddedLyricsBridge = null;
         _pipe?.Dispose();
         _artworkCancel?.Cancel();
         _translationCancel?.Cancel();

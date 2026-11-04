@@ -24,6 +24,7 @@
 #include "apiMenu.h"
 #include "apiThreading.h"
 #include "PipeServer.h"
+#include "BatchLyrics.h"
 #include "JsonUtil.h"
 #include "Lrc.h"
 
@@ -361,11 +362,18 @@ public:
             }
             menus->Release();
         }
+        batchLyrics_=CreateLyricsBatchFeature(core_,player_,threads_,
+            [this](){LaunchWindow();},
+            [this](){RefreshTrack(true);});
+        if(!batchLyrics_)
+            Diagnostic(L"[KaraokeStudio] Batch Lyrics actions unavailable (remove old standalone addon if installed)");
         RefreshTrack(true);
         Diagnostic(L"[KaraokeStudio] Plugin Initialized");
         return S_OK;
     }
     HRESULT WINAPI Finalize() override {
+        StopLyricsBatchFeature(batchLyrics_);
+        batchLyrics_.reset();
         commandsRunning_->store(false,std::memory_order_release);
         if(epoch_)++(*epoch_);
         CancelRequests();
@@ -542,6 +550,7 @@ private:
     IAIMPServiceThreads* threads_=nullptr;
     std::shared_ptr<std::atomic<bool>> commandsRunning_=std::make_shared<std::atomic<bool>>(true);
     IAIMPMenuItem* menu_=nullptr;
+    std::shared_ptr<LyricsBatchFeature> batchLyrics_;
     bool hooked_=false;
     std::wstring currentIdentity_;
     std::shared_ptr<PipeServer> pipe_;
