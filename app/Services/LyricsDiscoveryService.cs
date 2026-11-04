@@ -195,8 +195,8 @@ public sealed class LyricsDiscoveryService
             .Where(c => IsUsable(c.Content) && c.Confidence >= 0.50)
             .GroupBy(c => c.Source + "|" + c.Content, StringComparer.Ordinal)
             .Select(g => g.First())
-            .OrderByDescending(c => c.Confidence)
-            .ThenByDescending(c => c.Synced)
+            .OrderByDescending(c => c.Confidence + (c.Synced ? 0.04 : 0))
+            .ThenByDescending(c => c.Confidence)
             .ThenBy(c => c.Source == "Legacy Bridge" ? 0 : 1)
             .Take(24).ToArray();
         return new(result, result.Length > 0

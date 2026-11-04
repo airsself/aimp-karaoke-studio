@@ -22,6 +22,7 @@ $report = [ordered]@{
   demoWindowCreated = $false
   uiAutomationConnectionFound = $false
   bilingualSplitVerified = $false
+  lyricsSearchDialogVerified = $false
   screenshotCaptured = $false
   pluginDllLoaded = $false
   aimpLoadedModules = @()
@@ -248,6 +249,56 @@ try {
           $g2.CopyFromScreen($s.X,$s.Y,0,0,$image.Size)
           $image.Save((Join-Path $folder "bilingual-split.png"),[System.Drawing.Imaging.ImageFormat]::Png)
         } finally { $g2.Dispose(); $image.Dispose() }
+      }
+    }
+    # Invoke the modal Lyrics Finder from a separate PowerShell process.
+    # ButtonAutomationPeer.Invoke can wait for ShowDialog to close.
+    $finderWorker = $null
+    try {
+      $scriptPath = Join-Path $env:GITHUB_WORKSPACE "tests\InvokeLyricsFinder.ps1"
+      $findArgs = @("-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+                    "-File", $scriptPath, "-WindowHandle", $renderer.MainWindowHandle.ToInt64())
+      $finderWorker = Start-Process -FilePath "powershell.exe" -ArgumentList $findArgs -WindowStyle Hidden -PassThru
+      $dialog = $null
+      $windowCondition = [System.Windows.Automation.PropertyCondition]::new(
+        [System.Windows.Automation.AutomationElement]::NameProperty,
+        "Поиск текстов · AIMP Karaoke Studio")
+      for($trial=0;$trial -lt 16;$trial++){
+        Start-Sleep -Milliseconds 350
+        $dialog = [System.Windows.Automation.AutomationElement]::RootElement.FindFirst(
+          [System.Windows.Automation.TreeScope]::Children, $windowCondition)
+        if($null -ne $dialog){break}
+      }
+      $report.lyricsSearchDialogVerified = $null -ne $dialog
+      Write-Host "LYRICS FINDER UI: $($report.lyricsSearchDialogVerified)"
+      if($report.lyricsSearchDialogVerified){
+        $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+        $screenshot = [System.Drawing.Bitmap]::new(
+          [Math]::Min($bounds.Width,1920),[Math]::Min($bounds.Height,1080))
+        $draw = [System.Drawing.Graphics]::FromImage($screenshot)
+        try {
+          $draw.CopyFromScreen($bounds.X,$bounds.Y,0,0,$screenshot.Size)
+          $screenshot.Save((Join-Path $folder "lyrics-search-v3.png"),
+            [System.Drawing.Imaging.ImageFormat]::Png)
+        } finally { $draw.Dispose();$screenshot.Dispose() }
+        $closeCondition = [System.Windows.Automation.PropertyCondition]::new(
+          [System.Windows.Automation.AutomationElement]::NameProperty,"Закрыть")
+        $closeButton = $dialog.FindFirst(
+          [System.Windows.Automation.TreeScope]::Descendants,$closeCondition)
+        if($null -ne $closeButton) {
+          $closeButton.GetCurrentPattern(
+            [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+        }
+      }
+    } catch {
+      Write-Warning "Lyrics Finder UI smoke probe failed: $_"
+    } finally {
+      if($finderWorker){
+        Start-Sleep -Milliseconds 350
+        $finderWorker.Refresh()
+        if(-not $finderWorker.HasExited){
+          Stop-Process -Id $finderWorker.Id -Force -ErrorAction SilentlyContinue
+        }
       }
     }
     # An AIMP first-run dialog can suppress track metadata without crashing WPF;
