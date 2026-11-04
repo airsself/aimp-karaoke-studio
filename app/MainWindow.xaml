@@ -239,9 +239,29 @@
                 <ComboBoxItem Content="Португальский" Tag="pt"/>
                 <ComboBoxItem Content="Русский" Tag="ru"/>
               </ComboBox>
+              <TextBlock Text="Источник перевода" Style="{StaticResource SmallText}" Margin="0,12,0,6"/>
+              <ComboBox x:Name="TranslationProviderCombo" Height="30" Background="#24212A"
+                        Foreground="#ECEAF2" BorderBrush="#504658" Padding="7,3"
+                        SelectionChanged="TranslationProvider_Changed">
+                <ComboBox.ItemContainerStyle>
+                  <Style TargetType="ComboBoxItem">
+                    <Setter Property="Foreground" Value="#ECEAF2"/>
+                    <Setter Property="Background" Value="#24212A"/>
+                  </Style>
+                </ComboBox.ItemContainerStyle>
+                <ComboBoxItem Content="Авто · доступные провайдеры" Tag="auto"/>
+                <ComboBoxItem Content="MyMemory · без ключа" Tag="mymemory"/>
+                <ComboBoxItem Content="LibreTranslate · свой сервер" Tag="libre"/>
+                <ComboBoxItem Content="DeepL · API ключ" Tag="deepl"/>
+              </ComboBox>
+              <TextBlock Text="LibreTranslate · адрес HTTPS сервера" Style="{StaticResource SmallText}" Margin="0,10,0,5"/>
+              <TextBox x:Name="LibreTranslateUrlInput" Height="29" Padding="5,4"
+                       Background="#24212A" Foreground="#ECEAF2"
+                       BorderBrush="#504658" LostFocus="LibreTranslateUrl_Changed"
+                       ToolTip="Например https://translate.example.org или http://localhost:5000"/>
               <Button Content="↻  Повторить перевод" Style="{StaticResource OutlineButton}"
                       Margin="0,10,0,0" HorizontalAlignment="Stretch" Click="TranslationRetry_Click"/>
-              <TextBlock Text="Перевод выполняет онлайн-сервис MyMemory: текст строк отправляется третьей стороне только при включённой панели. Бесплатный лимит — 5000 символов в сутки. Готовые переводы кешируются локально."
+              <TextBlock Text="Текст отправляется выбранному провайдеру только при включении перевода. Авто: LibreTranslate (если задан URL) → DeepL (если задан ключ) → MyMemory. Ключи: переменные среды LIBRETRANSLATE_API_KEY и DEEPL_AUTH_KEY. Для новых переменных перезапустите приложение. Переводы кешируются локально."
                          Foreground="#9692A1" FontSize="10" TextWrapping="Wrap" Margin="0,9,0,0"/>
               <TextBlock Text="КЛАВИШИ" Style="{StaticResource SectionHeading}"/>
               <Grid>

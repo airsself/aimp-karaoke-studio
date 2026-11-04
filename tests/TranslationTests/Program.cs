@@ -61,7 +61,77 @@ try
     beforeSaves = service.CacheSaveCount;
     await service.TranslateLinesAsync(many,"en",0,(i,t,cached)=>{},(n,total)=>{},CancellationToken.None);
     Check(service.CacheSaveCount == beforeSaves, "Warm cache never rewrites disk");
-    Console.WriteLine("12 translation/cache/language and batch persistence tests passed");
+    // Provider fallback: LibreTranslate quota failure must switch to MyMemory.
+    var fallback = new ProviderFakeHandler { LibreStatus = HttpStatusCode.TooManyRequests };
+    var providerSource = new TranslationService(new HttpClient(fallback), temp + ".fallback");
+    string? providerName = null;
+    var autoResults = new Dictionary<int, string>();
+    await providerSource.TranslateLinesAsync(["Provider fallback test", "Second line"], "en", 0,
+        (i, t, cached) => autoResults[i] = t, (_, _) => { }, CancellationToken.None,
+        new TranslationProviderOptions("auto", "https://libre.example.test"),
+        name => providerName = name);
+    Check(autoResults.Count == 2 && autoResults.Values.All(x => x.StartsWith("MM:")),
+        "Fallback produces translations for every lyric line");
+    Check(fallback.LibreCalls == 1 && fallback.MyMemoryCalls == 2,
+        "Failed provider disabled for remaining session");
+    Check(providerName == "MyMemory", "Active fallback provider reported to UI");
+
+    var libre = new ProviderFakeHandler();
+    var libreService = new TranslationService(new HttpClient(libre), temp + ".libre");
+    var libreLines = new Dictionary<int, string>();
+    await libreService.TranslateLinesAsync(["Good morning"], "ja", 0,
+        (i, t, cached) => libreLines[i] = t, (_, _) => { }, CancellationToken.None,
+        new TranslationProviderOptions("libre", "https://libre.example.test"),
+        _ => { });
+    Check(libre.LibreCalls == 1 && libre.MyMemoryCalls == 0 &&
+        libreLines[0] == "LT:Good morning" && libre.LibreSource == "ja",
+        "LibreTranslate JSON response and Japanese source language");
+
+    var deepL = new ProviderFakeHandler();
+    var deepService = new TranslationService(new HttpClient(deepL), temp + ".deepl");
+    var deepLines = new Dictionary<int, string>();
+    await deepService.TranslateLinesAsync(["Good evening"], "zh-CN", 0,
+        (i, t, cached) => deepLines[i] = t, (_, _) => { }, CancellationToken.None,
+        new TranslationProviderOptions("deepl", DeepLApiKey: "test-key:fx"));
+    Check(deepL.DeepLCalls == 1 && deepL.DeepLSource == "ZH" &&
+        deepL.AuthHeader == "DeepL-Auth-Key test-key:fx" &&
+        deepLines[0] == "DL:Good evening",
+        "DeepL endpoint, authentication, language mapping and JSON response");
+
+    Check(TranslationProviderRouter.ValidateLibreUrl("https://libre.example.test/api").AbsolutePath
+        == "/api/translate", "LibreTranslate subpath endpoint construction");
+    try {
+        TranslationProviderRouter.ValidateLibreUrl("http://evil.example.test/translate");
+        throw new Exception("Expected insecure remote URL rejection");
+    } catch (TranslationException) { }
+
+    var failAll = new ProviderFakeHandler { LibreStatus = HttpStatusCode.TooManyRequests,
+        MyMemoryStatus = HttpStatusCode.TooManyRequests };
+    try {
+        await new TranslationService(new HttpClient(failAll), temp + ".failed")
+            .TranslateLinesAsync(["No provider available"], "en", 0,
+                (_, _, _) => { }, (_, _) => { }, CancellationToken.None,
+                new TranslationProviderOptions("auto", "https://libre.example.test"));
+        throw new Exception("Expected provider exhaustion");
+    } catch (TranslationException e) {
+        Check(e.Message.Contains("Нет доступных источников"), "Provider exhaustion diagnostic");
+    }
+
+    using (var abort = new CancellationTokenSource()) {
+        abort.Cancel();
+        var cancelledHandler = new ProviderFakeHandler();
+        try {
+            await new TranslationService(new HttpClient(cancelledHandler), temp + ".cancelled")
+                .TranslateLinesAsync(["Cancelled work"], "en", 0,
+                    (_, _, _) => { }, (_, _) => { }, abort.Token,
+                    new TranslationProviderOptions("auto", "https://libre.example.test"));
+            throw new Exception("Expected abort");
+        } catch (OperationCanceledException) { }
+        Check(cancelledHandler.LibreCalls == 0 && cancelledHandler.MyMemoryCalls == 0,
+            "Cancellation does not start fallback request");
+    }
+    Console.WriteLine("Translation/cache tests and provider routing regressions passed");
+
 }
 finally {
     if (File.Exists(temp)) File.Delete(temp);
@@ -83,4 +153,47 @@ sealed class FakeTranslationHandler: HttpMessageHandler
         return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) {
             Content=new StringContent(body,Encoding.UTF8,"application/json")});
     }
+}
+
+sealed class ProviderFakeHandler : HttpMessageHandler
+{
+    public int LibreCalls, MyMemoryCalls, DeepLCalls;
+    public string LibreSource = "", DeepLSource = "", AuthHeader = "";
+    public HttpStatusCode LibreStatus = HttpStatusCode.OK;
+    public HttpStatusCode MyMemoryStatus = HttpStatusCode.OK;
+
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        if (request.RequestUri!.Host == "libre.example.test")
+        {
+            LibreCalls++;
+            if (LibreStatus != HttpStatusCode.OK)
+                return new HttpResponseMessage(LibreStatus);
+            using var doc = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct));
+            LibreSource = doc.RootElement.GetProperty("source").GetString() ?? "";
+            var input = doc.RootElement.GetProperty("q").GetString() ?? "";
+            return Ok(new { translatedText = "LT:" + input });
+        }
+        if (request.RequestUri.Host.Contains("deepl.com"))
+        {
+            DeepLCalls++;
+            AuthHeader = request.Headers.Authorization?.ToString() ?? "";
+            using var doc = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct));
+            DeepLSource = doc.RootElement.GetProperty("source_lang").GetString() ?? "";
+            var input = doc.RootElement.GetProperty("text")[0].GetString() ?? "";
+            return Ok(new { translations = new[] { new { text = "DL:" + input } } });
+        }
+        MyMemoryCalls++;
+        if (MyMemoryStatus != HttpStatusCode.OK)
+            return new HttpResponseMessage(MyMemoryStatus);
+        var text = Uri.UnescapeDataString(request.RequestUri.Query.TrimStart('?')
+            .Split('&').Single(x => x.StartsWith("q="))[2..]);
+        return Ok(new { responseStatus = 200,
+            responseData = new { translatedText = "MM:" + text } });
+    }
+    private static HttpResponseMessage Ok(object value) =>
+        new(HttpStatusCode.OK) {
+            Content = new StringContent(JsonSerializer.Serialize(value), Encoding.UTF8, "application/json")
+        };
 }

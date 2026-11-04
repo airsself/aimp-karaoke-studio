@@ -11,7 +11,7 @@ namespace KaraokeStudio.Services;
 
 /// <summary>
 /// Opt-in, line-by-line English/Japanese/etc to Russian translation.
-/// Only lyric text is sent to MyMemory when the translation pane is opened.
+/// Only lyric text is sent to configured translation providers when translation is enabled.
 /// The hashed on-disk cache prevents repeat requests when a track is replayed.
 /// </summary>
 public sealed class TranslationService
@@ -62,9 +62,11 @@ public sealed class TranslationService
         return hiragana ? "ja" : hangul ? "ko" : han ? "zh-CN" : cyrillic ? "ru" : "en";
     }
 
-    private static string CacheKey(string sourceLang, string text)
+    private static string CacheKey(string sourceLang, string text, string providerNamespace = "")
     {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(sourceLang + "\nru\n" + text));
+        string identity = sourceLang + "\nru\n" + text;
+        if (!string.IsNullOrEmpty(providerNamespace)) identity += "\nproviders:" + providerNamespace;
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(identity));
         return Convert.ToHexString(bytes);
     }
 
@@ -76,9 +78,12 @@ public sealed class TranslationService
         IReadOnlyList<string> lines, string configuredLanguage, int focusIndex,
         Action<int, string, bool> onLine,
         Action<int, int> onProgress,
-        CancellationToken ct)
+        CancellationToken ct,
+        TranslationProviderOptions? providerOptions = null,
+        Action<string>? onProviderChanged = null)
     {
         if (lines.Count == 0) return;
+        var router = new TranslationProviderRouter(_http, providerOptions ?? new(), onProviderChanged);
         string source = configuredLanguage == "auto"
             ? DetectSourceLanguage(string.Join(" ", lines.Take(80)))
             : configuredLanguage;
@@ -102,7 +107,7 @@ public sealed class TranslationService
                 }
                 else
                 {
-                    string key = CacheKey(source, original);
+                    string key = CacheKey(source, original, router.CacheNamespace);
                     if (_cache.TryGetValue(key, out var cached))
                     {
                         onLine(index, cached, true);
@@ -114,7 +119,7 @@ public sealed class TranslationService
                         foreach (var chunk in chunks)
                         {
                             ct.ThrowIfCancellationRequested();
-                            translated.Append(await TranslateChunkAsync(chunk, source, ct));
+                            translated.Append(await router.TranslateAsync(chunk, source, ct));
                         }
                         string result = translated.ToString();
                         ct.ThrowIfCancellationRequested();
@@ -174,35 +179,6 @@ public sealed class TranslationService
         }
         if (buffer.Length > 0) parts.Add(buffer.ToString());
         return parts;
-    }
-
-    private async Task<string> TranslateChunkAsync(string chunk, string source, CancellationToken ct)
-    {
-        var query = Uri.EscapeDataString(chunk);
-        var pair = Uri.EscapeDataString(source + "|ru");
-        var uri = new Uri("https://api.mymemory.translated.net/get?q=" + query + "&langpair=" + pair);
-        try
-        {
-            using var response = await _http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct);
-            if (response.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.Forbidden)
-                throw new TranslationException("Лимит онлайн-перевода исчерпан. Попробуйте позже.");
-            if (!response.IsSuccessStatusCode)
-                throw new TranslationException($"Сервис перевода недоступен: HTTP {(int)response.StatusCode}.");
-            using var stream = await response.Content.ReadAsStreamAsync(ct);
-            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
-            var root = document.RootElement;
-            if (root.TryGetProperty("responseStatus", out var status) &&
-                status.ValueKind == JsonValueKind.Number && status.GetInt32() != 200)
-                throw new TranslationException("MyMemory вернул ошибку или ограничение запросов.");
-            string? value = root.GetProperty("responseData").GetProperty("translatedText").GetString();
-            return WebUtility.HtmlDecode(value ?? "");
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-        catch (TranslationException) { throw; }
-        catch (Exception error) when (error is HttpRequestException or TaskCanceledException or JsonException or KeyNotFoundException or InvalidOperationException)
-        {
-            throw new TranslationException("Не удалось подключиться к сервису перевода.", error);
-        }
     }
 
     private async Task SaveCacheAsync(CancellationToken ct)
