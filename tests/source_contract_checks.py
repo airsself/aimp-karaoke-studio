@@ -40,7 +40,7 @@ checks={
 'v3 source-only discovery': (r/'app/Services/LyricsDiscoveryService.cs').exists(),
 'v3 manual sidecar save': (r/'app/Services/LyricsSidecarStore.cs').exists(),
 'v3 autosearch cancellation': 'CancelLyricsLookup' in ui and 'BeginAutomaticLyricsLookup' in ui,
-'v3 metadata safety': 'SetToAll' not in (r/'app/Services/LyricsSidecarStore.cs').read_text(),
+'v3 metadata safety': 'SetToAll' not in (r/'app/Services/LyricsSidecarStore.cs').read_text('utf-8'),
 }
 for k,v in checks.items():
     if not v: raise AssertionError(k)
