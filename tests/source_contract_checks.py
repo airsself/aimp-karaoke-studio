@@ -41,6 +41,12 @@ checks={
 'v3 manual sidecar save': (r/'app/Services/LyricsSidecarStore.cs').exists(),
 'v3 autosearch cancellation': 'CancelLyricsLookup' in ui and 'BeginAutomaticLyricsLookup' in ui,
 'v3 metadata safety': 'SetToAll(' not in (r/'app/Services/LyricsSidecarStore.cs').read_text('utf-8'),
+'prepared karaoke graphemes': 'KaraokeHighlightEngine.Prepare' in (r/'app/Models/LyricLineViewModel.cs').read_text('utf-8'),
+'adaptive rendering cadence': 'TimeSpan.FromMilliseconds(interval)' in ui,
+'cached background rendering': 'BitmapCache RenderAtScale' in xaml,
+'batch translation cache': 'unsaved >= 20' in (r/'app/Services/TranslationService.cs').read_text('utf-8'),
+'background cache serialization': 'Task.Run(() =>' in (r/'app/Services/TranslationService.cs').read_text('utf-8'),
+'bilingual resize invalidation guard': '_appliedTranslationLayoutVersion' in ui,
 }
 for k,v in checks.items():
     if not v: raise AssertionError(k)

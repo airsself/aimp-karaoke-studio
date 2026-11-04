@@ -50,7 +50,18 @@ try
     var longPhrase = new string('あ',270);
     await service.TranslateLinesAsync([longPhrase],"ja",0,(i,t,c)=>{},(n,total)=>{},CancellationToken.None);
     Check(handler.Queries.All(x=>Encoding.UTF8.GetByteCount(x)<=480), "Long phrase remains chunked");
-    Console.WriteLine("9 translation/cache/language tests passed");
+    var many = Enumerable.Range(0, 42).Select(i => "Unique cached lyric number " + i).ToArray();
+    int beforeSaves = service.CacheSaveCount;
+    await service.TranslateLinesAsync(many,"en",0,(i,t,cached)=>{},(n,total)=>{},CancellationToken.None);
+    int addedSaves = service.CacheSaveCount - beforeSaves;
+    Check(addedSaves is >= 1 and <= 3, "Batched cache checkpoints for 42 new lines");
+    var warm = new TranslationService(new HttpClient(new FakeTranslationHandler()), temp);
+    Check(many.All(line => warm.TryGetCached(line,"en",out var value) && value.StartsWith("RU:")),
+          "All 42 new translations survive batch persistence");
+    beforeSaves = service.CacheSaveCount;
+    await service.TranslateLinesAsync(many,"en",0,(i,t,cached)=>{},(n,total)=>{},CancellationToken.None);
+    Check(service.CacheSaveCount == beforeSaves, "Warm cache never rewrites disk");
+    Console.WriteLine("12 translation/cache/language and batch persistence tests passed");
 }
 finally {
     if (File.Exists(temp)) File.Delete(temp);

@@ -1,4 +1,4 @@
-# AIMP Karaoke Studio v3.0 — Lyrics Discovery + Bilingual Karaoke
+# AIMP Karaoke Studio v3.1 — performance-optimized Karaoke Studio
 
 An AIMP 5.40 C++ plugin and a separate WPF 10 Windows lyrics window, styled to match the original AIMP dark UI.
 
@@ -9,6 +9,28 @@ An AIMP 5.40 C++ plugin and a separate WPF 10 Windows lyrics window, styled to m
 - Three lyrics modes (Reading, Karaoke, Stage), **Vocal Focus** layout, virtualized lyric text, inline karaoke fill, font scaling, smooth line scroll, full-screen, manual reading and live controls.
 - Offline embedded album artwork via AIMP AlbumArt (for PNG/JPEG encoded image container data up to 450 kB), asynchronous local cover fallback.
 - Windows configuration persistence, parser tests, build/package scripts and diagnostic logs.
+
+## Performance update v3.1
+
+- Precalculate Unicode grapheme and Enhanced-LRC word boundaries once
+  per active lyric line. Only update bound lyric text when the visible
+  character boundary changes (instead of allocating on each timer tick).
+- Adaptive WPF redraw cadence: ~30 Hz when playing/smooth-scrolling,
+  ~7 Hz when paused and ~3 Hz while minimized. AIMP's monotonic
+  playback position and lyric timestamps remain unchanged.
+- Cache ambient artwork in a reduced-scale WPF bitmap and lower the
+  expensive blur radius. Original sharp album artwork remains intact.
+- Avoid refreshing all lyric ViewModels for every minor SizeChanged event.
+- Group online translation cache disk writes (every 20 newly translated
+  lines and on completion/cancellation), perform JSON serialization off
+  the UI thread and yield periodically when replaying a warm cache.
+- Dispose translation cancellation tokens after the async operation
+  finishes. All playback buttons, Enhanced LRC timing, Russian
+  translation and Lyrics Discovery remain supported.
+
+Measured benchmark and AIMP smoke diagnostics are in the GitHub Actions
+build log; metrics reflect the CI host and do not guarantee identical
+results on every laptop/GPU. See docs/performance-v3.1.md.
 
 ## Lyrics discovery and download (v3.0)
 

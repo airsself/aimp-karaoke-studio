@@ -46,24 +46,32 @@ public sealed class LyricLineViewModel : INotifyPropertyChanged
     private Visibility _progressVisibility = Visibility.Collapsed;
     public Visibility ProgressVisibility { get => _progressVisibility; set { if (_progressVisibility != value) { _progressVisibility = value; Changed(); } } }
     private double _progress;
-    public double Progress { get => _progress; set { if (Math.Abs(_progress-value)>0.1) { _progress = value; Changed(); UpdateKaraokeSlices(); } } }
+    private KaraokeHighlightEngine.PreparedLine? _preparedHighlight;
+    private int _lastHighlightCut = -1;
+    public double Progress { get => _progress; set { if (Math.Abs(_progress-value)>0.1) { _progress = value; UpdateKaraokeSlices(); } } }
     private Thickness _padding = new(8,12,8,12);
     public Thickness Padding { get => _padding; set { if (_padding != value) { _padding = value; Changed(); } } }
     private double _lineHeight = 60;
     public double LineHeight { get => _lineHeight; set { if (Math.Abs(_lineHeight-value)>0.05) { _lineHeight=value; Changed(); } } }
 
-    // Two runs avoid reflow when the color boundary changes.
+    // Recompute slices only when the highlighted grapheme boundary advances.
+    // Hundreds of timer ticks can occur between two visual character changes.
     private void UpdateKaraokeSlices()
     {
         if (!KaraokeFillEnabled || Text.Length == 0)
         {
+            if (_lastHighlightCut == 0) return;
+            _lastHighlightCut = 0;
             HighlightedText = "";
             RemainingText = Text;
             return;
         }
-        int cut = KaraokeHighlightEngine.GetHighlightLength(Text, Words, StartMs, EndMs, Progress);
-        HighlightedText = Text[..cut];
-        RemainingText = Text[cut..];
+        _preparedHighlight ??= KaraokeHighlightEngine.Prepare(Text, Words);
+        int cut = _preparedHighlight.GetHighlightLength(StartMs, EndMs, Progress);
+        if (_lastHighlightCut == cut) return;
+        _lastHighlightCut = cut;
+        HighlightedText = cut == 0 ? "" : Text[..cut];
+        RemainingText = cut == Text.Length ? "" : Text[cut..];
     }
 
     // The translation is keyed to this original lyric line, so both columns

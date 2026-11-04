@@ -85,50 +85,68 @@ public sealed class TranslationService
         if (!AllowedLanguages.Contains(source))
             throw new TranslationException("Неизвестный исходный язык перевода.");
         int total = lines.Count, done = 0;
+        int unsaved = 0;
         // Give the current lyric and following phrases priority, then fill the rest.
         int pivot = Math.Clamp(focusIndex, 0, total - 1);
         var indices = Enumerable.Range(pivot, total - pivot)
             .Concat(Enumerable.Range(0, pivot));
-        foreach (int index in indices)
+        try
         {
-            ct.ThrowIfCancellationRequested();
-            string original = lines[index];
-            if (string.IsNullOrWhiteSpace(original))
-            {
-                onLine(index, "", true);
-                onProgress(++done, total);
-                continue;
-            }
-            if (source == "ru")
-            {
-                onLine(index, original, true);
-                onProgress(++done, total);
-                continue;
-            }
-            string key = CacheKey(source, original);
-            if (_cache.TryGetValue(key, out var cached))
-            {
-                onLine(index, cached, true);
-                onProgress(++done, total);
-                continue;
-            }
-            var chunks = ChunkByUtf8Bytes(original);
-            var translated = new StringBuilder();
-            foreach (var chunk in chunks)
+            foreach (int index in indices)
             {
                 ct.ThrowIfCancellationRequested();
-                translated.Append(await TranslateChunkAsync(chunk, source, ct));
+                string original = lines[index];
+                if (string.IsNullOrWhiteSpace(original) || source == "ru")
+                {
+                    onLine(index, source == "ru" ? original : "", true);
+                }
+                else
+                {
+                    string key = CacheKey(source, original);
+                    if (_cache.TryGetValue(key, out var cached))
+                    {
+                        onLine(index, cached, true);
+                    }
+                    else
+                    {
+                        var chunks = ChunkByUtf8Bytes(original);
+                        var translated = new StringBuilder();
+                        foreach (var chunk in chunks)
+                        {
+                            ct.ThrowIfCancellationRequested();
+                            translated.Append(await TranslateChunkAsync(chunk, source, ct));
+                        }
+                        string result = translated.ToString();
+                        ct.ThrowIfCancellationRequested();
+                        if (string.IsNullOrWhiteSpace(result))
+                            throw new TranslationException("Сервис перевода вернул пустой результат.");
+                        _cache[key] = result;
+                        onLine(index, result, false);
+                        if (++unsaved >= 20)
+                        {
+                            // Checkpoint every 20 NEW lines, not for every line.
+                            // The actual serialization occurs on a pool thread.
+                            await SaveCacheAsync(CancellationToken.None);
+                            unsaved = 0;
+                        }
+                        // Avoid API bursts under anonymous provider limits.
+                        await Task.Delay(150, ct);
+                    }
+                }
+                done++;
+                if ((done & 7) == 0 || done == total)
+                    onProgress(done, total);
+                // A warm cache can contain thousands of lines with no I/O await.
+                // Periodic yielding keeps input, window dragging and playback live.
+                if ((done & 31) == 0)
+                    await Task.Delay(4, ct);
             }
-            string result = translated.ToString();
-            ct.ThrowIfCancellationRequested();
-            if (string.IsNullOrWhiteSpace(result))
-                throw new TranslationException("Сервис перевода вернул пустой результат.");
-            _cache[key] = result;
-            onLine(index, result, false);
-            onProgress(++done, total);
-            await SaveCacheAsync(ct);
-            // Spread anonymous requests over time to avoid traffic bursts.
-            await Task.Delay(150, ct);
+        }
+        finally
+        {
+            // Preserve completed translations on cancellation or API quota errors.
+            // Never block the WPF message pump with whole-cache JSON serialization.
+            if (unsaved > 0) await SaveCacheAsync(CancellationToken.None);
         }
     }
 
@@ -189,22 +207,31 @@ public sealed class TranslationService
 
     private async Task SaveCacheAsync(CancellationToken ct)
     {
-        await _diskLock.WaitAsync(ct);
+        await _diskLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             if (_cache.Count > 15000) return; // bounded disk footprint
-            string json = JsonSerializer.Serialize(_cache);
+            // JSON serialization and large dictionary snapshots must never
+            // run on WPF's UI thread.
+            string json = await Task.Run(() =>
+                JsonSerializer.Serialize(_cache.ToArray().ToDictionary(
+                    pair => pair.Key, pair => pair.Value,
+                    StringComparer.Ordinal)), ct).ConfigureAwait(false);
             if (Encoding.UTF8.GetByteCount(json) > 8_000_000) return;
             Directory.CreateDirectory(Path.GetDirectoryName(_cachePath)!);
             string temp = _cachePath + ".tmp";
-            await File.WriteAllTextAsync(temp, json, ct);
+            await File.WriteAllTextAsync(temp, json, ct).ConfigureAwait(false);
             File.Move(temp, _cachePath, overwrite: true);
+            Interlocked.Increment(ref _cacheSaveCount);
         }
-        catch (OperationCanceledException) { throw; }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (IOException) { /* cache is optional */ }
         catch (UnauthorizedAccessException) { /* read-only profile */ }
         finally { _diskLock.Release(); }
     }
+    private int _cacheSaveCount;
+    // Observable for profiling and deterministic regression checks.
+    public int CacheSaveCount => Volatile.Read(ref _cacheSaveCount);
 }
 
 public sealed class TranslationException : Exception

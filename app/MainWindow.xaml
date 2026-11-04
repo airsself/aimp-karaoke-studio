@@ -83,7 +83,10 @@
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition x:Name="SettingsColumn" Width="0"/></Grid.ColumnDefinitions>
         <Grid Grid.Column="0" Background="{StaticResource StageBrush}" ClipToBounds="True">
           <Image x:Name="AmbientImage" Stretch="UniformToFill" Opacity="0" IsHitTestVisible="False">
-            <Image.Effect><BlurEffect Radius="72"/></Image.Effect>
+            <!-- The ambient cover is static; cache its composited bitmap at
+                 reduced resolution rather than blurring the full-screen scene. -->
+            <Image.CacheMode><BitmapCache RenderAtScale="0.35"/></Image.CacheMode>
+            <Image.Effect><BlurEffect Radius="18"/></Image.Effect>
           </Image>
           <Rectangle Fill="#C70D0E11" IsHitTestVisible="False"/>
           <!-- Vocal Focus is a soft atmospheric focus, not a framed panel. -->

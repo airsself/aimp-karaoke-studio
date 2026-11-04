@@ -1,5 +1,24 @@
 # Changelog
 
+## 3.1.0 — Performance optimization (2026-11-04)
+
+- Reduce per-tick memory allocation and CPU time in karaoke word highlighting:
+  Unicode/grapheme and word-timing ranges are computed only once per active line.
+- Bind highlighted text only when the visible character changes; remove
+  unbound Progress PropertyChanged notifications on each frame.
+- Adaptive playback UI cadence: 33ms active, 150ms paused, 300ms minimized;
+  smoother, bounded scroll easing without 60-Hz WPF invalidation.
+- Cache ambient cover rendering with quarter-resolution BitmapCache and
+  replace the expensive full-surface BlurEffect radius 72 with radius 18.
+- Skip unnecessary full-library ViewModel updates on small layout changes.
+- Batch MyMemory translation disk writes, move cache serialization off the
+  dispatcher, yield on large cached lyrics and flush on cancellation.
+- Add managed highlight parity/alloc benchmarks, WPF view-model event-count
+  tests, translation batch-cache regressions and live AIMP CPU/RAM telemetry.
+- Preserve transport commands, lyrics retrieval, translation, LRC formats,
+  API/protocol contracts and previous user settings.
+
+
 ## 3.0.0 — Lyrics Discovery / Lyrics Bridge integration (2026-11-04)
 
 - Integrate the protocol of AIMP Lyrics Bridge 2.5.0 RC2 for localhost lookup.

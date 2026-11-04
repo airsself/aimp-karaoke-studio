@@ -44,7 +44,13 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _translationCancel;
     private int _translationSession;
     private bool _translationEnabled;
-    private readonly DispatcherTimer _frames = new() { Interval = TimeSpan.FromMilliseconds(16) };
+    // Adaptive render cadence: 30 Hz while playing/scrolling, 150 ms paused,
+    // 300 ms minimized. Audio timing still comes from AIMP's monotonic clock.
+    private readonly DispatcherTimer _frames = new() { Interval = TimeSpan.FromMilliseconds(33) };
+    private bool _lastTranslationVisible;
+    private double _lastTranslationWidth = double.NaN;
+    private int _translationLayoutVersion;
+    private int _appliedTranslationLayoutVersion = -1;
     private readonly PipeClient? _pipe;
     private readonly StudioSettings _settings = SettingsStore.Load();
     private readonly bool _demo;
@@ -330,6 +336,7 @@ public partial class MainWindow : Window
     private void SetLyrics(IEnumerable<LyricsDto> items, bool synced, string source)
     {
         _lines.Clear();
+        _translationLayoutVersion++;
         _lastScrollIndex = 0;
         _followLyrics = true;
         ResumeFollowButton.Visibility = Visibility.Collapsed;
@@ -358,6 +365,13 @@ public partial class MainWindow : Window
 
     private void Frame(object? sender, EventArgs e)
     {
+        bool scrollAnimating = _followLyrics && _scrollViewer is not null &&
+            Math.Abs(_targetScroll - _scrollViewer.VerticalOffset) > 0.9;
+        int interval = WindowState == WindowState.Minimized ? 300 :
+            _clock.Playing || scrollAnimating ? 33 : 150;
+        if (_frames.Interval.TotalMilliseconds != interval)
+            _frames.Interval = TimeSpan.FromMilliseconds(interval);
+        if (WindowState == WindowState.Minimized) return;
         if (_demo && _durationMs > 0 && _clock.PositionMs > _durationMs)
         {
             _clock.Seek(_durationMs);
@@ -381,11 +395,11 @@ public partial class MainWindow : Window
                 line.Progress = 100.0 * Math.Clamp((double)(position + _settings.OffsetMs - line.StartMs) /
                                   Math.Max(1, end - line.StartMs), 0, 1);
             }
-            if (_followLyrics && _scrollViewer != null && Math.Abs(_targetScroll - _scrollViewer.VerticalOffset) > 0.4)
+            if (_followLyrics && _scrollViewer != null && Math.Abs(_targetScroll - _scrollViewer.VerticalOffset) > 0.85)
             {
                 double remaining = _targetScroll - _scrollViewer.VerticalOffset;
                 _scrollViewer.ScrollToVerticalOffset(_settings.SmoothScroll ?
-                    _scrollViewer.VerticalOffset + remaining * 0.15 : _targetScroll);
+                    _scrollViewer.VerticalOffset + remaining * 0.23 : _targetScroll);
             }
         }
         if (position / 250 != _lastUiTime)
@@ -633,15 +647,27 @@ public partial class MainWindow : Window
     private void UpdateTranslationLayout()
     {
         if (!_ready) return;
+        double width = LyricsItems.ActualWidth > 0
+            ? LyricsItems.ActualWidth : Math.Max(400, ActualWidth - 48);
+        double paneWidth = Math.Max(140, (width - 24) * 0.50);
+        // An interactive resize can generate hundreds of SizeChanged events.
+        // Never walk all 5000 ViewModels for fractional pixel changes.
+        bool changed = _lastTranslationVisible != _translationEnabled ||
+            _appliedTranslationLayoutVersion != _translationLayoutVersion ||
+            !double.IsFinite(_lastTranslationWidth) ||
+            (_translationEnabled && Math.Abs(paneWidth - _lastTranslationWidth) >= 12);
+        if (!changed) return;
+        _lastTranslationVisible = _translationEnabled;
+        _lastTranslationWidth = paneWidth;
+        _appliedTranslationLayoutVersion = _translationLayoutVersion;
         TranslationHeader.Visibility = _translationEnabled ? Visibility.Visible : Visibility.Collapsed;
         TranslationDivider.Visibility = _translationEnabled ? Visibility.Visible : Visibility.Collapsed;
         SyncIndicator.Visibility = _translationEnabled ? Visibility.Collapsed : Visibility.Visible;
         TranslationButton.Content = _translationEnabled ? "RU · Закрыть" : "RU · Перевод";
-        TranslationButton.Background = _translationEnabled ? Solid("#3B3151") : Solid("#1D1B21");
-        TranslationButton.BorderBrush = _translationEnabled ? Solid("#7A659C") : Solid("#34313B");
-        double width = LyricsItems.ActualWidth > 0 ? LyricsItems.ActualWidth : Math.Max(400, ActualWidth - 48);
-        // Take half the available lyric canvas; leave room for both halves to wrap.
-        double paneWidth = Math.Max(140, (width - 24) * 0.50);
+        TranslationButton.Background = _translationEnabled
+            ? Solid("#3B3151") : Solid("#1D1B21");
+        TranslationButton.BorderBrush = _translationEnabled
+            ? Solid("#7A659C") : Solid("#34313B");
         foreach (var line in _lines)
         {
             line.TranslationVisibility = _translationEnabled ? Visibility.Visible : Visibility.Collapsed;
@@ -652,6 +678,7 @@ public partial class MainWindow : Window
     private void CancelTranslation()
     {
         ++_translationSession;
+        // The running translation task owns disposal after it has unwound.
         _translationCancel?.Cancel();
         _translationCancel = null;
     }
@@ -704,12 +731,13 @@ public partial class MainWindow : Window
             line.TranslationText = string.IsNullOrWhiteSpace(line.Text) ? "" : "…";
         TranslationStatus.Text = "Переводим строки…";
         int focus = Math.Max(0, _currentIndex);
-        _ = TranslateCurrentTrackAsync(lines, _settings.TranslationSourceLanguage, focus, session, tokenSource.Token);
+        _ = TranslateCurrentTrackAsync(lines, _settings.TranslationSourceLanguage, focus, session, tokenSource);
     }
 
     private async Task TranslateCurrentTrackAsync(string[] lyrics, string language,
-        int focus, int session, CancellationToken cancellation)
+        int focus, int session, CancellationTokenSource tokenSource)
     {
+        CancellationToken cancellation = tokenSource.Token;
         bool Current() => !cancellation.IsCancellationRequested && !_closing &&
                           _translationEnabled && session == _translationSession;
         try
@@ -740,6 +768,12 @@ public partial class MainWindow : Window
         {
             if (Current()) TranslationStatus.Text = "Ошибка перевода. Повторите в настройках.";
             StudioLog.Error("Translation", error);
+        }
+        finally
+        {
+            if (ReferenceEquals(_translationCancel, tokenSource))
+                _translationCancel = null;
+            tokenSource.Dispose();
         }
     }
 

@@ -17,6 +17,7 @@ $report = [ordered]@{
   rendererAlive = $false
   rendererExitCode = $null
   rendererPid = 0
+  performance = @{}
   rendererTitle = ""
   demoAlive = $false
   demoWindowCreated = $false
@@ -316,6 +317,31 @@ try {
           Stop-Process -Id $finderWorker.Id -Force -ErrorAction SilentlyContinue
         }
       }
+    }
+    # Independent Windows performance telemetry: WPF process CPU usage,
+    # private/working set size, handles and thread count during live AIMP playback.
+    # Best-effort diagnostics only, not a cross-machine performance score.
+    try {
+      $start = Get-Process -Id $renderer.Id -ErrorAction Stop
+      $cpuBefore = $start.TotalProcessorTime.TotalMilliseconds
+      $startPrivate = $start.PrivateMemorySize64 / 1MB
+      Start-Sleep -Seconds 6
+      $end = Get-Process -Id $renderer.Id -ErrorAction Stop
+      $perf = [ordered]@{
+        observationSeconds = 6
+        cpuTimeMs = [Math]::Round($end.TotalProcessorTime.TotalMilliseconds - $cpuBefore)
+        cpuPercentOfOneCore = [Math]::Round(
+          100 * ($end.TotalProcessorTime.TotalMilliseconds - $cpuBefore) / 6000,1)
+        privateMB = [Math]::Round($end.PrivateMemorySize64 / 1MB,1)
+        privateDeltaMB = [Math]::Round($end.PrivateMemorySize64 / 1MB - $startPrivate,1)
+        workingSetMB = [Math]::Round($end.WorkingSet64 / 1MB,1)
+        threadCount = $end.Threads.Count
+        handleCount = $end.HandleCount
+      }
+      $report.performance = $perf
+      Write-Host ("WPF PERFORMANCE: " + ($perf | ConvertTo-Json -Compress))
+    } catch {
+      Write-Warning "WPF performance counters unavailable: $_"
     }
     # An AIMP first-run dialog can suppress track metadata without crashing WPF;
     # nevertheless WPF should remain responsive after lyrics are loaded.
