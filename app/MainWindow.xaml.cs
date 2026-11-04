@@ -140,6 +140,11 @@ public partial class MainWindow : Window
         TopCheck.IsChecked = _settings.AlwaysOnTop;
         AutoFindCheck.IsChecked = _settings.AutoFindLyrics;
         LegacyBridgeCheck.IsChecked = _settings.UseLegacyBridge;
+        TranslationProviderCombo.SelectedItem = TranslationProviderCombo.Items
+            .OfType<ComboBoxItem>()
+            .FirstOrDefault(x => (x.Tag as string) == _settings.TranslationProvider)
+            ?? TranslationProviderCombo.Items[0];
+        LibreTranslateUrlInput.Text = _settings.LibreTranslateUrl;
         _ready = true;
         ApplyAccent();
         UpdateSettingsValues();
@@ -766,6 +771,25 @@ public partial class MainWindow : Window
         if (_translationEnabled) BeginTranslation();
     }
 
+    private void TranslationProvider_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_ready || TranslationProviderCombo.SelectedItem is not ComboBoxItem selected
+            || selected.Tag is not string provider) return;
+        if (_settings.TranslationProvider == provider) return;
+        _settings.TranslationProvider = provider;
+        if (_translationEnabled) BeginTranslation();
+    }
+
+    private void LibreTranslateUrl_Changed(object sender, TextChangedEventArgs e)
+    {
+        if (!_ready) return;
+        string url = LibreTranslateUrlInput.Text.Trim();
+        if (_settings.LibreTranslateUrl == url) return;
+        _settings.LibreTranslateUrl = url;
+        if (_translationEnabled && _settings.TranslationProvider is "auto" or "libre")
+            BeginTranslation();
+    }
+
     private void BeginTranslation()
     {
         CancelTranslation();
@@ -783,11 +807,14 @@ public partial class MainWindow : Window
             line.TranslationText = string.IsNullOrWhiteSpace(line.Text) ? "" : "…";
         TranslationStatus.Text = "Переводим строки…";
         int focus = Math.Max(0, _currentIndex);
-        _ = TranslateCurrentTrackAsync(lines, _settings.TranslationSourceLanguage, focus, session, tokenSource);
+        var providers = TranslationProviderOptions.FromEnvironment(
+            _settings.TranslationProvider, _settings.LibreTranslateUrl);
+        _ = TranslateCurrentTrackAsync(lines, _settings.TranslationSourceLanguage, focus, session, tokenSource, providers);
     }
 
     private async Task TranslateCurrentTrackAsync(string[] lyrics, string language,
-        int focus, int session, CancellationTokenSource tokenSource)
+        int focus, int session, CancellationTokenSource tokenSource,
+        TranslationProviderOptions providers)
     {
         CancellationToken cancellation = tokenSource.Token;
         bool Current() => !cancellation.IsCancellationRequested && !_closing &&
@@ -807,8 +834,9 @@ public partial class MainWindow : Window
                 {
                     if (Current()) TranslationStatus.Text = $"Переведено {done}/{total}";
                 },
-                cancellation);
-            if (Current()) TranslationStatus.Text = "Перевод завершён · MyMemory";
+                cancellation, providers,
+                provider => { if (Current()) TranslationStatus.Text = "Источник: " + provider; });
+            if (Current()) TranslationStatus.Text = "Перевод завершён";
         }
         catch (OperationCanceledException) { }
         catch (TranslationException error)
