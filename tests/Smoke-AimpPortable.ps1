@@ -26,6 +26,7 @@ $report = [ordered]@{
   lyricsSearchDialogVerified = $false
   batchActionsRegistered = $false
   embeddedBridgeResponds = $false
+  goBridgeHealthy = $false
   screenshotCaptured = $false
   pluginDllLoaded = $false
   aimpLoadedModules = @()
@@ -63,6 +64,9 @@ try {
   Copy-Item -Path (Join-Path $addon "x64\*") -Destination $pluginDir -Recurse -Force
   $report.pluginInstallationPath = $pluginDir
   $wpfExe = Join-Path $pluginDir "KaraokeStudio.exe"
+  if (-not (Test-Path (Join-Path $pluginDir "KaraokeBridge.exe"))) {
+    throw "Go server binary missing from package"
+  }
 
   # Start player with a generated silent PCM WAV plus enhanced LRC sidecar.
   $wav = Join-Path $root "precision-smoke.wav"
@@ -362,7 +366,12 @@ try {
             $body = $reply.Content.ReadAsStringAsync().GetAwaiter().GetResult()
             if($body.Contains("AIMPLB-STATUS: MISSING_METADATA")) {
               $report.embeddedBridgeResponds = $true
-              Write-Host "BUILT-IN BRIDGE PASS: 127.0.0.1:$port"
+              try {
+                $health = $client.GetStringAsync("http://127.0.0.1:$port/healthz").GetAwaiter().GetResult()
+                $info = $health | ConvertFrom-Json
+                $report.goBridgeHealthy = ($info.engine -eq "go" -and $info.version -eq "4.1")
+              } catch { $report.goBridgeHealthy = $false }
+              Write-Host "GO BRIDGE HEALTH: $($report.goBridgeHealthy) @ 127.0.0.1:$port"
               break
             }
           } catch { }

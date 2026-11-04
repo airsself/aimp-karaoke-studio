@@ -1,5 +1,23 @@
 # Changelog
 
+## 4.1.0 — Open Go Bridge Server with independent modules
+
+- Add a clean-room Go 1.23.2 source implementation of the documented
+  v2.5 localhost marker protocol; no server source was included in the
+  supplied binary reference.
+- Modularize HTTP API, online providers, metadata scoring, persistent TTL
+  cache, Enhanced LRC parser, JSON configuration and orchestration.
+- Preserve native v4 batch hotkeys, metadata-safe Lyrics tag writing and
+  one registered AIMP DLL.
+- Replace the active WPF in-process HTTP listener with a separately compiled
+  Go executable launched and stopped by Karaoke Studio.
+- Add /healthz and /api/v1/search without asserting undocumented legacy
+  endpoints. Bind only to localhost with strict Host verification.
+- Add Go offline unit tests, vet gate and build from source in Windows CI.
+- Package KaraokeBridge.exe and bridge.config.json in the same .aimppack
+  as AimpKaraokeStudio.dll and KaraokeStudio.exe.
+
+
 ## 4.0.0 — Karaoke Studio + Lyrics Bridge Batch RC2 merge
 
 - Native single-DLL registration of current / selected-track / cancel actions.

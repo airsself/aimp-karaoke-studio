@@ -1,0 +1,23 @@
+{
+  "config_version": 4,
+  "listen": "127.0.0.1:17321",
+  "client_identity": "AimpKaraokeStudio-GoBridge/4.1",
+  "provider_order": ["lrclib", "lyrics.ovh"],
+  "lrclib_enabled": true,
+  "lrclib_base_url": "https://lrclib.net",
+  "lyrics_ovh_enabled": true,
+  "lyrics_ovh_base_url": "https://api.lyrics.ovh",
+  "request_timeout_seconds": 12,
+  "retry_count": 2,
+  "retry_backoff_ms": 350,
+  "min_request_interval_ms": 300,
+  "min_match_score": 0.78,
+  "early_accept_score": 0.94,
+  "prefer_synced": true,
+  "fallback_to_plain": true,
+  "cache_ttl_hours": 720,
+  "negative_cache_ttl_hours": 6,
+  "cache_max_entries": 3000,
+  "cache_dir": "cache",
+  "max_lyrics_bytes": 262144
+}

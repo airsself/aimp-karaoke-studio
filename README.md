@@ -1,4 +1,4 @@
-# AIMP Karaoke Studio v4.0 — Unified Karaoke and Lyrics Bridge
+# AIMP Karaoke Studio v4.1 — open-source Go Lyrics Bridge
 
 An AIMP 5.40 C++ plugin and a separate WPF 10 Windows lyrics window, styled to match the original AIMP dark UI.
 
@@ -9,6 +9,49 @@ An AIMP 5.40 C++ plugin and a separate WPF 10 Windows lyrics window, styled to m
 - Three lyrics modes (Reading, Karaoke, Stage), **Vocal Focus** layout, virtualized lyric text, inline karaoke fill, font scaling, smooth line scroll, full-screen, manual reading and live controls.
 - Offline embedded album artwork via AIMP AlbumArt (for PNG/JPEG encoded image container data up to 450 kB), asynchronous local cover fallback.
 - Windows configuration persistence, parser tests, build/package scripts and diagnostic logs.
+
+## v4.1 — fully open-source Go Bridge Server
+
+The archived v2.5.0 binary was examined as an **interface reference only**;
+it contains NO Go server source. v4.1 is a new independently developed Go
+implementation licensed with this project under MIT. The server is built from
+source as `KaraokeBridge.exe` and packaged alongside the ONE native AIMP
+plugin DLL and the WPF Karaoke Studio app.
+
+Modular Go source in `bridge-go/`:
+- `internal/httpapi`: legacy `GET /lyrics`, `GET /healthz`, and new
+  versioned `GET /api/v1/search` with JSON results.
+- `internal/provider`: independent, mocked-HTTP-testable LRCLIB exact/search
+  and lyrics.ovh adapters. Bandcamp/SongLyrics scraper behavior from the
+  unavailable proprietary server is **not** claimed or included.
+- `internal/scoring`: deterministic artist/title/duration match and synchronized
+  LRC preference.
+- `internal/cache`: hashed track keys, configurable TTL, optional negative
+  cache and atomic on-disk persistence.
+- `internal/lrc`: plain, synced and Enhanced LRC parser with timestamps and
+  word segments; raw timed content is preserved without conversion.
+- `internal/config`: typed, validated JSON config derived from the documented
+  v2.5 contract, with safe loopback-only binding.
+- `internal/engine`: provider orchestration, ranking and optional caching.
+- `internal/process`: the Go server stops when its WPF parent closes, including
+  unexpected Windows process termination.
+
+**Native compatibility:** old RC2 batch actions and the WebLyrics provider
+continue using `GET /lyrics?artist=...&title=...&album=...&mode=best`, with
+`AIMPLB-*-BEGIN/END` markers and `AIMPLB-LINEBREAK-7F3C` separators.
+No binary-only legacy server, Go CLI or third-party WebLyrics DLL is bundled.
+
+The server starts automatically when the Karaoke Studio WPF window opens,
+probes ports 17321–17340 on loopback, and is shut down with the window.
+It is not exposed to the network. Artist/title data is transmitted to
+LRCLIB and lyrics.ovh when searching. There is no remote management API.
+
+**Build/test:** Install Go 1.23.2+ alongside the existing Visual Studio,
+CMake and .NET 10 prerequisites. `build.ps1` runs
+`go test ./...`, `go vet ./...` and compiles a standalone Windows
+`KaraokeBridge.exe` from the open Go sources.
+
+See `bridge-go/README.md` and `docs/GO_BRIDGE_V4_1.md`.
 
 ## v4.0 — one unified AIMP plug-in
 

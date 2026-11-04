@@ -12,6 +12,8 @@ with ZipFile(package) as z:
     prefix='AimpKaraokeStudio/' + ('x64/' if arch == 'x64' else '')
     assert prefix+'AimpKaraokeStudio.dll' in names, 'Missing native DLL at expected AIMP path'
     assert prefix+'KaraokeStudio.exe' in names, 'Missing GUI app at expected AIMP path'
+    assert prefix+'KaraokeBridge.exe' in names, 'Missing native Go server at expected AIMP path'
+    assert prefix+'bridge.config.json' in names, 'Missing Go Bridge default config'
     assert 'AimpKaraokeStudio/INSTALL.md' in names, 'Missing instructions'
     if arch == 'x64':
         assert 'AimpKaraokeStudio/AimpKaraokeStudio.dll' not in names, 'x64 DLL incorrectly at plugin root'

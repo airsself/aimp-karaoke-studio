@@ -16,6 +16,12 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
+      - name: Set up Go 1.23.2
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: bridge-go/go.mod
+          cache-dependency-path: bridge-go/go.mod
+
       - name: Set up .NET 10 SDK
         uses: actions/setup-dotnet@v4
         with:

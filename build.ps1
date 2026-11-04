@@ -22,6 +22,19 @@ cmake --build $cppBuild --config Release
 if ($LASTEXITCODE -ne 0) { throw 'C++ build failed' }
 $nativeDll = Join-Path $cppBuild 'Release/AimpKaraokeStudio.dll'
 if (-not (Test-Path $nativeDll)) { throw 'Native DLL is missing after compilation' }
+Write-Host "[2/4] Testing and compiling Go Bridge (source build)..."
+if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
+  throw 'Go 1.23+ is required to compile the open-source Bridge server.'
+}
+Push-Location (Join-Path $root 'bridge-go')
+try {
+  go test ./... -count=1
+  if ($LASTEXITCODE -ne 0) { throw 'Go Bridge unit tests failed' }
+  go vet ./...
+  if ($LASTEXITCODE -ne 0) { throw 'Go Bridge vet failed' }
+  go build -trimpath -ldflags="-s -w" -o (Join-Path $root 'build/KaraokeBridge.exe') ./cmd/aimp-lyrics-bridge
+  if ($LASTEXITCODE -ne 0) { throw 'Go Bridge compile failed' }
+} finally { Pop-Location }
 Write-Host "[2/3] Publishing Windows WPF renderer ($rid)..."
 dotnet publish (Join-Path $root 'app/KaraokeStudio.csproj') -c Release -r $rid --self-contained true -o $publish -p:PublishSingleFile=false
 if ($LASTEXITCODE -ne 0) { throw '.NET publish failed' }
@@ -30,6 +43,8 @@ $binaryFolder = if ($Architecture -eq 'x64') { Join-Path $targetFolder 'x64' } e
 if (Test-Path $targetFolder) { Remove-Item -Recurse -Force $targetFolder }
 New-Item -ItemType Directory -Force $binaryFolder | Out-Null
 Copy-Item $nativeDll $binaryFolder
+Copy-Item (Join-Path $root 'build/KaraokeBridge.exe') $binaryFolder
+Copy-Item (Join-Path $root 'bridge-go/config.default.json') (Join-Path $binaryFolder 'bridge.config.json')
 Copy-Item (Join-Path $publish '*') $binaryFolder -Recurse -Force
 Copy-Item (Join-Path $root 'INSTALL.md') $targetFolder
 Copy-Item (Join-Path $root 'LICENSE') $targetFolder

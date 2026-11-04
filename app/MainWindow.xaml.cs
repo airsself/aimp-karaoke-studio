@@ -22,6 +22,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using System.Windows.Interop;
 using System.Runtime.InteropServices;
+using System.Diagnostics;
 
 namespace KaraokeStudio;
 
@@ -37,7 +38,7 @@ public partial class MainWindow : Window
     private readonly PlaybackClock _clock = new();
     private readonly TranslationService _translationService = new();
     private readonly LyricsDiscoveryService _lyricsDiscovery = new();
-    private EmbeddedLyricsBridge? _embeddedLyricsBridge;
+    private Process? _goBridgeProcess;
     private CancellationTokenSource? _lyricsLookupCancel;
     private LyricsTrack _currentTrack = new("", "", "", 0);
     private string _currentFilePath = "";
@@ -169,15 +170,9 @@ public partial class MainWindow : Window
         UpdateViewportPadding();
         UpdateTranslationLayout();
         if (_demo) StartDemo(); else _pipe?.Start();
-        try
-        {
-            // AIMP's integrated hotkeys and batch actions use this loopback Bridge.
-            _embeddedLyricsBridge = new EmbeddedLyricsBridge(_lyricsDiscovery);
-            if (!_embeddedLyricsBridge.Start())
-                StudioLog.Error("Embedded bridge startup",
-                    new InvalidOperationException("No available loopback port in 17321–17340"));
-        }
-        catch (Exception error) { StudioLog.Error("Embedded bridge startup", error); }
+        // Go server starts as a separate, bounded process, not on the WPF
+        // dispatcher thread. It shares only the documented local HTTP contract.
+        StartGoBridge();
         _frames.Start();
     }
 
@@ -185,8 +180,7 @@ public partial class MainWindow : Window
     {
         _closing = true;
         _frames.Stop();
-        _embeddedLyricsBridge?.Dispose();
-        _embeddedLyricsBridge = null;
+        StopGoBridge();
         _pipe?.Dispose();
         _artworkCancel?.Cancel();
         _translationCancel?.Cancel();
@@ -200,6 +194,52 @@ public partial class MainWindow : Window
         }
         _settings.Mode = _mode;
         SettingsStore.Save(_settings);
+    }
+
+    private void StartGoBridge()
+    {
+        try
+        {
+            string folder = AppContext.BaseDirectory;
+            string binary = Path.Combine(folder, "KaraokeBridge.exe");
+            string config = Path.Combine(folder, "bridge.config.json");
+            if (!File.Exists(binary))
+                throw new FileNotFoundException("Go Lyrics Bridge is missing from the plugin package", binary);
+            var info = new ProcessStartInfo(binary)
+            {
+                WorkingDirectory = folder,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden
+            };
+            if (File.Exists(config))
+            {
+                info.ArgumentList.Add("--config");
+                info.ArgumentList.Add(config);
+            }
+            info.ArgumentList.Add("--parent-pid");
+            info.ArgumentList.Add(Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            _goBridgeProcess = Process.Start(info);
+            if (_goBridgeProcess == null)
+                throw new InvalidOperationException("The Go Bridge process did not start");
+        }
+        catch (Exception error) { StudioLog.Error("Starting Go Lyrics Bridge", error); }
+    }
+
+    private void StopGoBridge()
+    {
+        try
+        {
+            if (_goBridgeProcess is { HasExited: false })
+                _goBridgeProcess.Kill(entireProcessTree: true);
+        }
+        catch (InvalidOperationException) { }
+        catch (System.ComponentModel.Win32Exception) { }
+        finally
+        {
+            _goBridgeProcess?.Dispose();
+            _goBridgeProcess = null;
+        }
     }
 
     private static string Stamp(int ms)
