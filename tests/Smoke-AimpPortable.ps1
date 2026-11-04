@@ -256,8 +256,10 @@ try {
     $finderWorker = $null
     try {
       $scriptPath = Join-Path $env:GITHUB_WORKSPACE "tests\InvokeLyricsFinder.ps1"
+      $finderLog = Join-Path $folder "finder-worker.log"
       $findArgs = @("-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
-                    "-File", $scriptPath, "-WindowHandle", $renderer.MainWindowHandle.ToInt64())
+                    "-File", $scriptPath, "-WindowHandle", $renderer.MainWindowHandle.ToInt64(),
+                    "-LogPath", $finderLog)
       $finderWorker = Start-Process -FilePath "powershell.exe" -ArgumentList $findArgs -WindowStyle Hidden -PassThru
       $dialog = $null
       $windowCondition = [System.Windows.Automation.PropertyCondition]::new(
@@ -270,6 +272,20 @@ try {
         if($null -ne $dialog){break}
       }
       $report.lyricsSearchDialogVerified = $null -ne $dialog
+      $windows = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
+        [System.Windows.Automation.TreeScope]::Children,
+        [System.Windows.Automation.Condition]::TrueCondition)
+      $titles = @($windows | ForEach-Object { $_.Current.Name })
+      $titles | Out-File (Join-Path $folder "ui-top-level-windows.txt") -Encoding utf8
+      $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+      $shot = [System.Drawing.Bitmap]::new([Math]::Min($bounds.Width,1920),
+          [Math]::Min($bounds.Height,1080))
+      $drawShot = [System.Drawing.Graphics]::FromImage($shot)
+      try {
+        $drawShot.CopyFromScreen($bounds.X,$bounds.Y,0,0,$shot.Size)
+        $shot.Save((Join-Path $folder "finder-attempt.png"),
+          [System.Drawing.Imaging.ImageFormat]::Png)
+      } finally { $drawShot.Dispose(); $shot.Dispose() }
       Write-Host "LYRICS FINDER UI: $($report.lyricsSearchDialogVerified)"
       if($report.lyricsSearchDialogVerified){
         $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
