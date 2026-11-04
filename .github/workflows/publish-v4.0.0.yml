@@ -1,0 +1,60 @@
+name: Publish v4.0.0 Unified Karaoke and Lyrics Bridge
+
+on:
+  push:
+    paths:
+      - .github/workflows/publish-v4.0.0.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    name: Publish v4.0.0 x64 installer and ZIP
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download tested Windows package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 41823939677 --repo "$GITHUB_REPOSITORY" --name "AIMP-Karaoke-Studio-x64-installer" --dir release
+          test -s release/AimpKaraokeStudio-x64.aimppack
+
+      - name: Verify hash, archive structure and produce ZIP alternative
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "95edcbc67cd2fab0090e393bf852c160cfbd92b7113e1f57a48d15e2026fb7a0  release/AimpKaraokeStudio-x64.aimppack" | sha256sum -c -
+          unzip -l release/AimpKaraokeStudio-x64.aimppack | grep -F 'AimpKaraokeStudio/x64/AimpKaraokeStudio.dll'
+          unzip -l release/AimpKaraokeStudio-x64.aimppack | grep -F 'AimpKaraokeStudio/x64/KaraokeStudio.exe'
+          cd release
+          mv AimpKaraokeStudio-x64.aimppack AimpKaraokeStudio-v4.0.0-x64.aimppack
+          sha256sum AimpKaraokeStudio-v4.0.0-x64.aimppack > SHA256SUMS.txt
+          zip -q -0 AIMP-Karaoke-Studio-v4.0.0-Windows-x64.zip AimpKaraokeStudio-v4.0.0-x64.aimppack
+          unzip -t -q AIMP-Karaoke-Studio-v4.0.0-Windows-x64.zip
+
+      - name: Publish stable public download links
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="v4.0.0"
+          assets=(
+            release/AimpKaraokeStudio-v4.0.0-x64.aimppack
+            release/AIMP-Karaoke-Studio-v4.0.0-Windows-x64.zip
+            release/SHA256SUMS.txt
+          )
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" "${assets[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$tag" "${assets[@]}" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "8eba0eea224aadafc8dd9c0e6e1336952e566716" \
+              --title "AIMP Karaoke Studio v4.0 — Unified Lyrics Bridge + Karaoke" \
+              --notes "Windows x64 for AIMP 5.40. ONE registered AIMP plugin DLL now integrates Karaoke Studio v3.1 and source-based AIMP Lyrics Bridge Batch 2.5.0 RC2 functions. Restores current track Ctrl+Alt+L, selected-tracks Ctrl+Alt+Shift+L, cancel action and playlist context menu. Native batch snapshots up to 5000 selected items, deduplicates files, and processes sequentially without blocking audio. Metadata-safety: edits ONLY Lyrics on existing capable tags, NEVER SetToAll; unsupported formats get separate non-overwriting .lrc sidecars. Built-in localhost Bridge server in the WPF window uses LRCLIB and lyrics.ovh and requires no old Bridge.exe/CLI/WebLyrics DLL. Keep existing translation, word-timed karaoke, search and transport. CI run 41823939677 passed: 6 embedded Bridge tests, 13 merge safety guards, 40 source contracts, official AIMP x64 seek/pause/resume, bilingual window, Lyrics Finder, built-in Bridge responded and native batch actions registered. IMPORTANT: uninstall or disable old standalone AIMP Lyrics Bridge Hotkey plugin before installing v4 to avoid duplicate AIMP action IDs. Batch tag writing still needs manual confirmation on disposable media or backed-up audio."
+          fi
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json url,assets --jq '{url:.url,files:[.assets[].name]}'
