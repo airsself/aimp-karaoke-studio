@@ -80,7 +80,7 @@ sealed class FakeHttp: HttpMessageHandler
     {
         ct.ThrowIfCancellationRequested();
         Calls++;
-        var url = request.RequestUri!.ToString();
+        var url = request.RequestUri!.AbsoluteUri;
         Requests.Add(url);
         string? body = null;
         if (url.Contains("api/get") && url.Contains("Ocean%20of%20Silence"))
