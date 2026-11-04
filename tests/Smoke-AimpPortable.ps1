@@ -24,6 +24,8 @@ $report = [ordered]@{
   uiAutomationConnectionFound = $false
   bilingualSplitVerified = $false
   lyricsSearchDialogVerified = $false
+  batchActionsRegistered = $false
+  embeddedBridgeResponds = $false
   screenshotCaptured = $false
   pluginDllLoaded = $false
   aimpLoadedModules = @()
@@ -136,6 +138,9 @@ try {
       if ($null -eq $line) { break }
       try { $message = $line | ConvertFrom-Json -ErrorAction Stop }
       catch { continue }
+      if ($message.type -eq 'batchStatus' -and $message.actionsRegistered -eq $true) {
+        $report.batchActionsRegistered = $true
+      }
       if ($message.type -eq 'commandResult' -and $message.command -eq $expectedCommand) { return $message }
     }
     throw "Command '$expectedCommand' did not return an AIMP SDK acknowledgement"
@@ -343,6 +348,28 @@ try {
     } catch {
       Write-Warning "WPF performance counters unavailable: $_"
     }
+    # Verify the built-in Bridge is available from the LIVE WPF renderer.
+    # Deliberately malformed metadata avoids sending any external lookup request.
+    try {
+      $handler = [System.Net.Http.HttpClientHandler]::new()
+      $handler.UseProxy = $false
+      $client = [System.Net.Http.HttpClient]::new($handler)
+      $client.Timeout = [TimeSpan]::FromMilliseconds(750)
+      try {
+        for($port=17321;$port -le 17340;$port++) {
+          try {
+            $reply = $client.GetAsync("http://127.0.0.1:$port/lyrics?artist=").GetAwaiter().GetResult()
+            $body = $reply.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+            if($body.Contains("AIMPLB-STATUS: MISSING_METADATA")) {
+              $report.embeddedBridgeResponds = $true
+              Write-Host "BUILT-IN BRIDGE PASS: 127.0.0.1:$port"
+              break
+            }
+          } catch { }
+        }
+      } finally { $client.Dispose() }
+    } catch { Write-Warning "Embedded bridge connectivity test unavailable: $_" }
+    Write-Host "BATCH ACTION REGISTRATION: $($report.batchActionsRegistered)"
     # An AIMP first-run dialog can suppress track metadata without crashing WPF;
     # nevertheless WPF should remain responsive after lyrics are loaded.
     Start-Sleep -Seconds 3

@@ -1,4 +1,4 @@
-# AIMP Karaoke Studio v3.1 — performance-optimized Karaoke Studio
+# AIMP Karaoke Studio v4.0 — Unified Karaoke and Lyrics Bridge
 
 An AIMP 5.40 C++ plugin and a separate WPF 10 Windows lyrics window, styled to match the original AIMP dark UI.
 
@@ -9,6 +9,42 @@ An AIMP 5.40 C++ plugin and a separate WPF 10 Windows lyrics window, styled to m
 - Three lyrics modes (Reading, Karaoke, Stage), **Vocal Focus** layout, virtualized lyric text, inline karaoke fill, font scaling, smooth line scroll, full-screen, manual reading and live controls.
 - Offline embedded album artwork via AIMP AlbumArt (for PNG/JPEG encoded image container data up to 450 kB), asynchronous local cover fallback.
 - Windows configuration persistence, parser tests, build/package scripts and diagnostic logs.
+
+## v4.0 — one unified AIMP plug-in
+
+**Single native plugin DLL:** AimpKaraokeStudio.dll hosts both the original
+Karaoke Studio capabilities and the AIMP Lyrics Bridge 2.5.0 Batch RC2
+hotkey / batch actions. The WPF window remains the only user interface.
+
+**Hotkeys and commands:**
+- Ctrl+Alt+L: refresh the current track's lyrics.
+- Ctrl+Alt+Shift+L: download lyrics for selected playlist tracks after
+  confirmation (also available in the AIMP playlist context menu).
+- Cancel Lyrics Update: separate assignable action in AIMP hotkey settings.
+- The former action IDs are retained; disable/uninstall the old standalone
+  Lyrics Bridge hotkey plugin BEFORE installing this unified plugin,
+  otherwise duplicate action identifiers may prevent registration.
+
+**Standalone provider:** a lightweight loopback HTTP endpoint running only
+while the Karaoke Studio WPF window is open implements the old
+AIMPLB /lyrics marker protocol. The native action opens the same window
+automatically. This endpoint reuses the integrated LRCLIB and lyrics.ovh
+search, so NO separate old Bridge.exe, CLI, or aimp_webLyrics.dll is needed.
+If the user's old Bridge server still occupies its default port, the
+native worker may use it first; new lookup does not require that server.
+
+**Safe writing:** compatible existing audio tags get only their Lyrics field
+updated, skipping ID3v1; no TagEditor.SetToAll or wholesale metadata copy.
+Unsupported/untagged formats fall back to a UTF-8 .lrc sidecar beside
+the audio, without overwriting an existing .lrc. Save operations run
+sequentially, batch selections are capped at 5000 and deduplicated.
+Back up important audio files before first use of native AIMP Tag Editor.
+
+**All existing functionality remains:** v3.1 performance optimizations,
+karaoke timing, Russian translation, dual-column display, search/download,
+playback controls, settings and manual LRC.
+
+Technical integration details: docs/BRIDGE_MERGE_V4.md.
 
 ## Performance update v3.1
 

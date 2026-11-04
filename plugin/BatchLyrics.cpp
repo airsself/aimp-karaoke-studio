@@ -98,7 +98,7 @@ Fetch FetchLegacy(const Track& t,const std::atomic<bool>& stopped,IAIMPTaskOwner
     std::wstring url=L"/lyrics?artist="+artist+L"&title="+title+L"&album="+album+L"&mode=best&force=1&nocache=1";
     HINTERNET session=WinHttpOpen(L"AimpKaraokeStudio/4.0",WINHTTP_ACCESS_TYPE_NO_PROXY,nullptr,nullptr,0);
     if(!session)return {Status::Offline,{}};
-    WinHttpSetTimeouts(session,500,500,700,6000);
+    WinHttpSetTimeouts(session,500,500,1500,25000);
     Fetch result{Status::Offline,{}};
     for(int pass=0;pass<3 && result.status==Status::Offline;pass++){
         for(int port=17321;port<=17340;port++){

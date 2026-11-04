@@ -1,5 +1,19 @@
 # Changelog
 
+## 4.0.0 — Karaoke Studio + Lyrics Bridge Batch RC2 merge
+
+- Native single-DLL registration of current / selected-track / cancel actions.
+- Preserve previous Ctrl+Alt+L and Ctrl+Alt+Shift+L hotkeys/action IDs.
+- Snapshot and deduplicate selected playlist items; sequential non-blocking
+  lookup and main-thread writes, progress notifications and cancellation.
+- Metadata-safe per-tag Lyrics change; no SetToAll or unrelated tag edits.
+- Fallback to non-overwriting .lrc sidecar for files without safe tags.
+- Built-in loopback-only Lyrics Bridge marker protocol backed by LRCLIB /
+  lyrics.ovh, with no closed-source Bridge binaries redistributed.
+- Keep v3.1 renderer and bilingual translation functionality unchanged.
+- Extend Windows CI with in-process HTTP protocol and source guard tests.
+
+
 ## 3.1.0 — Performance optimization (2026-11-04)
 
 - Reduce per-tick memory allocation and CPU time in karaoke word highlighting:

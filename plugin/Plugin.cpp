@@ -367,6 +367,10 @@ public:
             [this](){RefreshTrack(true);});
         if(!batchLyrics_)
             Diagnostic(L"[KaraokeStudio] Batch Lyrics actions unavailable (remove old standalone addon if installed)");
+        // IPC evidence for integration tests: actions were accepted by AIMP.
+        if(pipe_)pipe_->Publish("batchStatus",
+            std::string("{\"type\":\"batchStatus\",\"actionsRegistered\":")+
+            (batchLyrics_?"true}":"false}"));
         RefreshTrack(true);
         Diagnostic(L"[KaraokeStudio] Plugin Initialized");
         return S_OK;
