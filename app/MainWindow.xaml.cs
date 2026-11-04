@@ -780,7 +780,7 @@ public partial class MainWindow : Window
         if (_translationEnabled) BeginTranslation();
     }
 
-    private void LibreTranslateUrl_Changed(object sender, TextChangedEventArgs e)
+    private void LibreTranslateUrl_Changed(object sender, RoutedEventArgs e)
     {
         if (!_ready) return;
         string url = LibreTranslateUrlInput.Text.Trim();
