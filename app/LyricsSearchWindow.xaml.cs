@@ -1,5 +1,6 @@
 using KaraokeStudio.Services;
 using Microsoft.Win32;
+using SaveFileDialog = Microsoft.Win32.SaveFileDialog;
 using System;
 using System.Linq;
 using System.Threading;
