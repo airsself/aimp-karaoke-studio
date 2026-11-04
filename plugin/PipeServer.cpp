@@ -154,7 +154,7 @@ void PipeServer::Run(){
                 std::lock_guard lock(mu_);
                 connected_=true;
                 queue_.clear();
-                for(const auto* key:{"track","lyrics","artwork","state","position"}){
+                for(const auto* key:{"batchStatus","track","lyrics","artwork","state","position"}){
                     auto it=latest_.find(key);
                     if(it!=latest_.end())queue_.push_back(it->second);
                 }
