@@ -182,6 +182,9 @@
                 KeyboardNavigation.TabNavigation="Cycle"
                 BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1,0,0,0">
           <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0">
+            <ScrollViewer.Resources>
+              <Style TargetType="ScrollBar" BasedOn="{StaticResource StudioVerticalScrollBar}"/>
+            </ScrollViewer.Resources>
             <StackPanel Margin="{StaticResource DS.Inset.Drawer}">
               <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
