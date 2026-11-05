@@ -107,6 +107,11 @@ for expected in [
     assert expected in dialog
 
 code = (root / "app/MainWindow.xaml.cs").read_text(encoding="utf-8")
+# Compact button captions must not break Windows UI Automation or smoke tests.
+assert 'AutomationProperties.Name="Найти"' in main
+assert 'AutomationProperties.Name="RU · Перевод"' in main
+assert "AutomationProperties.SetName(TranslationButton" in code
+
 assert "SettingsScrim_MouseLeftButtonDown" in code
 assert "UpdateResponsiveChrome()" in code
 assert "DesignMetrics.SettingsWidth" in code
