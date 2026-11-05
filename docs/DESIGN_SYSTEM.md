@@ -99,6 +99,7 @@
 | `StudioTextBox` | Поля поиска / адреса | hover, keyboard focus, disabled |
 | `StudioComboBox` + `StudioComboBoxItem` | Источники / языки | hover, keyboard focus, selected, disabled |
 | `StudioCard` | Контейнер результатов / превью | поверхность, радиус, обводка |
+| `StudioVerticalScrollBar` | Полоса прокрутки настроек и поиска | нейтральная тёмная дорожка, hover, dragging |
 | `DiscoveryResultItem` | Результат поиска | hover, selected, focus |
 | `PanelTitle`, `PanelLabel`, `HelperText` | Тексты | иерархия читаемости |
 
