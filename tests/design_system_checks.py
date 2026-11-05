@@ -117,6 +117,8 @@ assert "SettingsCloseButton.Focus()" in code
 assert 'x:Name="ResultsPlaceholder"' in dialog
 assert 'VerticalContentAlignment="Top"' in dialog
 assert "ResultsPlaceholder.Visibility" in (root / "app/LyricsSearchWindow.xaml.cs").read_text(encoding="utf-8")
+assert 'WindowStyle="None" ResizeMode="CanResize"' in dialog
+assert 'DialogTitlebar_MouseLeftButtonDown' in dialog
 assert 'BasedOn="{StaticResource StudioVerticalScrollBar}"' in main
 assert dialog.count('BasedOn="{StaticResource StudioVerticalScrollBar}"') >= 2
 assert "SettingsScrim_MouseLeftButtonDown" in code
