@@ -26,7 +26,7 @@
         <Grid Margin="16,0,0,0">
           <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-          <Border Width="19" Height="18" Background="{DynamicResource ControlBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1"
+          <Border Width="20" Height="20" Background="{DynamicResource ControlBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1"
                   CornerRadius="2" VerticalAlignment="Center">
             <TextBlock Text="A" Foreground="{DynamicResource TextBrush}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
           </Border>
@@ -52,12 +52,12 @@
             <TextBlock x:Name="CoverPlaceholder" Text="♪" FontSize="22" Foreground="{DynamicResource DimBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             <Image x:Name="CoverImage" Stretch="UniformToFill"/>
           </Grid>
-          <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,15,0">
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
             <TextBlock x:Name="TrackTitle" Text="Ожидание AIMP" FontWeight="SemiBold" FontSize="15"
                        Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis"/>
-            <TextBlock x:Name="TrackArtist" Text="Откройте композицию в проигрывателе" Style="{StaticResource SmallText}" Margin="0,3,0,0"/>
-            <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
-              <Ellipse x:Name="StatusDot" Width="5" Height="5" Fill="#77757F" VerticalAlignment="Center" Margin="0,0,5,0"/>
+            <TextBlock x:Name="TrackArtist" Text="Откройте композицию в проигрывателе" Style="{StaticResource SmallText}" Margin="0,4,0,0"/>
+            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+              <Ellipse x:Name="StatusDot" Width="8" Height="8" Fill="#77757F" VerticalAlignment="Center" Margin="0,0,4,0"/>
               <TextBlock x:Name="StatusText" Text="Подключение…" Foreground="{DynamicResource DimBrush}" FontSize="10"/>
               <TextBlock Text=" · " Foreground="{DynamicResource DimBrush}" FontSize="10"/>
               <TextBlock x:Name="SourceText" Text="Нет текста" Foreground="#777680" FontSize="10"/>
@@ -72,7 +72,7 @@
             </StackPanel>
           </Border>
           <Button x:Name="TranslationButton" Grid.Column="3" Content="RU · Перевод" AutomationProperties.Name="RU · Перевод"
-                  Style="{StaticResource OutlineButton}" Margin="0,0,9,0" VerticalAlignment="Center"
+                  Style="{StaticResource OutlineButton}" Margin="0,0,8,0" VerticalAlignment="Center"
                   ToolTip="Разделить окно на оригинал и автоматический перевод на русский" Click="Translation_Click"/>
           <Button x:Name="SettingsButton" Grid.Column="4" Content="⚙  Настройки" AutomationProperties.Name="Настройки" Style="{StaticResource OutlineButton}" ToolTip="Настройки отображения и перевода"
                   Margin="0" VerticalAlignment="Center" Click="Settings_Click"/>
@@ -106,7 +106,7 @@
           <!-- A single virtualized list contains both columns: wrapped translations
                cannot drift away from their original timestamped lyric line. -->
           <Grid x:Name="TranslationHeader" Panel.ZIndex="3" Visibility="Collapsed" IsHitTestVisible="False"
-                HorizontalAlignment="Stretch" VerticalAlignment="Top" Margin="28,14,28,0">
+                HorizontalAlignment="Stretch" VerticalAlignment="Top" Margin="28,16,28,0">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
             <TextBlock Text="ОРИГИНАЛ" Foreground="{DynamicResource SecondaryBrush}" FontSize="10"
                        HorizontalAlignment="Center"/>
@@ -118,7 +118,7 @@
             </StackPanel>
           </Grid>
           <TextBlock x:Name="SyncIndicator" Text="ПОСТРОЧНАЯ СИНХРОНИЗАЦИЯ" Foreground="{DynamicResource SecondaryBrush}" FontSize="10"
-                     HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,17,20,0" Panel.ZIndex="3"/>
+                     HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,16,20,0" Panel.ZIndex="3"/>
           <ListBox x:Name="LyricsItems" Panel.ZIndex="2" Margin="20,0" Background="Transparent" BorderThickness="0"
                    ScrollViewer.VerticalScrollBarVisibility="Hidden" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                    ScrollViewer.CanContentScroll="True" VirtualizingPanel.IsVirtualizing="True"
@@ -140,7 +140,7 @@
                           MouseLeftButtonUp="LyricLine_MouseLeftButtonUp" Tag="{Binding StartMs}" Cursor="Hand">
                     <DockPanel LastChildFill="True" HorizontalAlignment="Stretch">
                       <Border DockPanel.Dock="Right" Width="{Binding TranslationPaneWidth}"
-                              Visibility="{Binding TranslationVisibility}" Padding="19,0,9,0">
+                              Visibility="{Binding TranslationVisibility}" Padding="20,0,8,0">
                         <TextBlock Text="{Binding TranslationText, Mode=OneWay}" TextWrapping="Wrap"
                                    TextAlignment="Center" HorizontalAlignment="Stretch"
                                    VerticalAlignment="Center" MaxWidth="820"
@@ -149,7 +149,7 @@
                                    LineStackingStrategy="BlockLineHeight" Foreground="{Binding Foreground}"
                                    Opacity="{Binding Opacity}"/>
                       </Border>
-                      <Border Padding="10,0,14,0">
+                      <Border Padding="12,0,12,0">
                         <TextBlock TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Stretch"
                                    VerticalAlignment="Center" MaxWidth="850"
                                    FontFamily="Segoe UI" FontSize="{Binding FontSize}" FontWeight="{Binding Weight}"
@@ -167,10 +167,10 @@
           <StackPanel x:Name="EmptyPanel" Panel.ZIndex="3" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="40">
             <TextBlock Text="♪" Foreground="{DynamicResource DimBrush}" FontSize="35" HorizontalAlignment="Center"/>
             <TextBlock x:Name="EmptyHeadline" Text="Здесь появится текст песни" Foreground="{DynamicResource TextBrush}"
-                       FontWeight="SemiBold" FontSize="23" TextAlignment="Center" Margin="0,13,0,0"/>
+                       FontWeight="SemiBold" FontSize="23" TextAlignment="Center" Margin="0,12,0,0"/>
             <TextBlock x:Name="EmptyDescription" Text="Запустите композицию в AIMP или откройте LRC-файл."
                        Style="{StaticResource SmallText}" FontSize="13" TextAlignment="Center" TextWrapping="Wrap"
-                       MaxWidth="450" Margin="0,11,0,0"/>
+                       MaxWidth="450" Margin="0,12,0,0"/>
           </StackPanel>
         </Grid>
 
@@ -200,10 +200,10 @@
               <Slider x:Name="ContrastSlider" Minimum="15" Maximum="95" TickFrequency="1" Style="{StaticResource SettingSlider}" ValueChanged="SettingSlider_Changed"/>
               <TextBlock Text="ЦВЕТ" Style="{StaticResource SectionHeading}"/>
               <StackPanel Orientation="Horizontal">
-                <Button x:Name="AccentAimp" Style="{StaticResource SwatchButton}" Tag="#8A7BB7" Background="#8A7BB7" Width="26" Height="26" Margin="0,0,9,0" BorderBrush="#BFB4D8" BorderThickness="2" ToolTip="AIMP · фиолетовый" Click="Accent_Click"/>
-                <Button x:Name="AccentBlue" Style="{StaticResource SwatchButton}" Tag="#6C99A6" Background="#6C99A6" Width="26" Height="26" Margin="0,0,9,0" BorderBrush="Transparent" BorderThickness="2" ToolTip="Холодный голубой" Click="Accent_Click"/>
-                <Button x:Name="AccentSage" Style="{StaticResource SwatchButton}" Tag="#90A593" Background="#90A593" Width="26" Height="26" Margin="0,0,9,0" BorderBrush="Transparent" BorderThickness="2" ToolTip="Шалфей" Click="Accent_Click"/>
-                <Button x:Name="AccentWarm" Style="{StaticResource SwatchButton}" Tag="#C0ADA0" Background="#C0ADA0" Width="26" Height="26" BorderBrush="Transparent" BorderThickness="2" ToolTip="Тёплый" Click="Accent_Click"/>
+                <Button x:Name="AccentAimp" Style="{StaticResource SwatchButton}" Tag="#8A7BB7" Background="#8A7BB7" Width="32" Height="32" Margin="0,0,8,0" BorderBrush="#BFB4D8" BorderThickness="2" ToolTip="AIMP · фиолетовый" Click="Accent_Click"/>
+                <Button x:Name="AccentBlue" Style="{StaticResource SwatchButton}" Tag="#6C99A6" Background="#6C99A6" Width="32" Height="32" Margin="0,0,8,0" BorderBrush="Transparent" BorderThickness="2" ToolTip="Холодный голубой" Click="Accent_Click"/>
+                <Button x:Name="AccentSage" Style="{StaticResource SwatchButton}" Tag="#90A593" Background="#90A593" Width="32" Height="32" Margin="0,0,8,0" BorderBrush="Transparent" BorderThickness="2" ToolTip="Шалфей" Click="Accent_Click"/>
+                <Button x:Name="AccentWarm" Style="{StaticResource SwatchButton}" Tag="#C0ADA0" Background="#C0ADA0" Width="32" Height="32" BorderBrush="Transparent" BorderThickness="2" ToolTip="Тёплый" Click="Accent_Click"/>
               </StackPanel>
               <TextBlock Text="ПОВЕДЕНИЕ" Style="{StaticResource SectionHeading}"/>
               <DockPanel><TextBlock Text="Смещение синхронизации" Style="{StaticResource SmallText}"/>
@@ -223,7 +223,7 @@
               <TextBlock Text="Автопоиск отправляет исполнителя и название внешним сервисам LRCLIB / lyrics.ovh. Существующие метаданные аудиофайлов не изменяются. Сохранение в .lrc — только по кнопке."
                          Foreground="{DynamicResource DimBrush}" FontSize="10" TextWrapping="Wrap" Margin="0,6,0,0"/>
               <TextBlock Text="ПЕРЕВОД" Style="{StaticResource SectionHeading}"/>
-              <TextBlock Text="Язык оригинала" Style="{StaticResource SmallText}" Margin="0,0,0,6"/>
+              <TextBlock Text="Язык оригинала" Style="{StaticResource SmallText}" Margin="0,0,0,8"/>
               <ComboBox x:Name="TranslationSourceCombo" Style="{StaticResource StudioComboBox}"
                         SelectionChanged="TranslationSource_Changed">
                 <ComboBoxItem Content="Авто (EN / JA / KO / ZH / RU)" Tag="auto"/>
@@ -238,7 +238,7 @@
                 <ComboBoxItem Content="Португальский" Tag="pt"/>
                 <ComboBoxItem Content="Русский" Tag="ru"/>
               </ComboBox>
-              <TextBlock Text="Источник перевода" Style="{StaticResource SmallText}" Margin="0,12,0,6"/>
+              <TextBlock Text="Источник перевода" Style="{StaticResource SmallText}" Margin="0,12,0,8"/>
               <ComboBox x:Name="TranslationProviderCombo" Style="{StaticResource StudioComboBox}"
                         SelectionChanged="TranslationProvider_Changed">
                 <ComboBoxItem Content="Авто · доступные провайдеры" Tag="auto"/>
@@ -252,14 +252,14 @@
                 <ComboBoxItem Content="OpenRouter · Free модели, ключ" Tag="openrouter"/>
                 <ComboBoxItem Content="Cloudflare AI · Free Tier, ключ" Tag="cloudflare"/>
               </ComboBox>
-              <TextBlock Text="LibreTranslate · адрес HTTPS сервера" Style="{StaticResource SmallText}" Margin="0,10,0,5"/>
+              <TextBlock Text="LibreTranslate · адрес HTTPS сервера" Style="{StaticResource SmallText}" Margin="0,12,0,8"/>
               <TextBox x:Name="LibreTranslateUrlInput" Style="{StaticResource StudioTextBox}"
                        LostFocus="LibreTranslateUrl_Changed"
                        ToolTip="Например https://translate.example.org или http://localhost:5000"/>
               <Button Content="↻  Повторить перевод" Style="{StaticResource OutlineButton}"
                       Margin="0,10,0,0" HorizontalAlignment="Stretch" Click="TranslationRetry_Click"/>
               <TextBlock Text="Текст отправляется выбранному провайдеру только при включении перевода. Авто: LibreTranslate → DeepL → Gemini → Groq → Cloudflare → OpenRouter → MyMemory (только настроенные). Azure и Google Cloud с биллингом — только вручную. API-ключи только через переменные среды; см. docs/TRANSLATION_PROVIDERS.md. Для новых переменных перезапустите приложение. Переводы кешируются локально."
-                         Foreground="#9692A1" FontSize="10" TextWrapping="Wrap" Margin="0,9,0,0"/>
+                         Foreground="#9692A1" FontSize="10" TextWrapping="Wrap" Margin="0,8,0,0"/>
               <TextBlock Text="КЛАВИШИ" Style="{StaticResource SectionHeading}"/>
               <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -287,7 +287,7 @@
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
             <Button Content="◀◀" Style="{StaticResource TransportButton}" ToolTip="Предыдущая композиция" Click="Previous_Click"/>
             <Button x:Name="PlayButton" Content="▶" Style="{StaticResource RoundPlay}" ToolTip="Пауза / воспроизведение" Click="Play_Click"
-                    BorderBrush="{DynamicResource AccentBrush}" BorderThickness="2" Width="34" Height="34" Margin="5,0"/>
+                    BorderBrush="{DynamicResource AccentBrush}" BorderThickness="2" Width="36" Height="36" Margin="5,0"/>
             <Button Content="▶▶" Style="{StaticResource TransportButton}" ToolTip="Следующая композиция" Click="Next_Click"/>
           </StackPanel>
           <Grid Grid.Column="2" VerticalAlignment="Center">
@@ -298,11 +298,11 @@
             <TextBlock x:Name="DurationText" Grid.Column="2" Text="00:00" VerticalAlignment="Center" FontSize="11" FontFamily="Consolas" Foreground="#A3A0AA" Margin="12,0,0,0"/>
           </Grid>
           <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
-            <Button x:Name="FontMinusButton" Content="A−" Style="{StaticResource OutlineButton}" ToolTip="Уменьшить текст (Ctrl+-)" Margin="0,0,7,0" Click="FontMinus_Click"/>
-            <Button x:Name="FontPlusButton" Content="A+" Style="{StaticResource OutlineButton}" ToolTip="Увеличить текст (Ctrl++)" Margin="0,0,7,0" Click="FontPlus_Click"/>
-            <Button x:Name="FullscreenButton" Content="⛶" Style="{StaticResource OutlineButton}" ToolTip="Полный экран (F11)" Margin="0,0,7,0" Click="Fullscreen_Click"/>
+            <Button x:Name="FontMinusButton" Content="A−" Style="{StaticResource OutlineButton}" ToolTip="Уменьшить текст (Ctrl+-)" Margin="0,0,8,0" Click="FontMinus_Click"/>
+            <Button x:Name="FontPlusButton" Content="A+" Style="{StaticResource OutlineButton}" ToolTip="Увеличить текст (Ctrl++)" Margin="0,0,8,0" Click="FontPlus_Click"/>
+            <Button x:Name="FullscreenButton" Content="⛶" Style="{StaticResource OutlineButton}" ToolTip="Полный экран (F11)" Margin="0,0,8,0" Click="Fullscreen_Click"/>
             <Button x:Name="FindLyricsButton" Content="Найти" AutomationProperties.Name="Найти" Style="{StaticResource OutlineButton}"
-                    ToolTip="Найти текст в Legacy Bridge, LRCLIB и lyrics.ovh" Margin="0,0,7,0"
+                    ToolTip="Найти текст в Legacy Bridge, LRCLIB и lyrics.ovh" Margin="0,0,8,0"
                     Click="FindLyrics_Click"/>
             <Button x:Name="OpenLrcButton" Content="LRC" Style="{StaticResource OutlineButton}" ToolTip="Открыть локальный LRC" Margin="0" Click="OpenLrc_Click"/>
           </StackPanel>
