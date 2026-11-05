@@ -55,6 +55,9 @@
                      ItemContainerStyle="{StaticResource DiscoveryResultItem}"
                      AutomationProperties.Name="Найденные варианты текста"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+              <ListBox.Resources>
+                <Style TargetType="ScrollBar" BasedOn="{StaticResource StudioVerticalScrollBar}"/>
+              </ListBox.Resources>
               <ListBox.ItemTemplate>
                 <DataTemplate>
                   <StackPanel>
@@ -85,7 +88,11 @@
                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                      Style="{StaticResource StudioTextBox}" Height="Auto" VerticalContentAlignment="Top"
                      Background="Transparent" Foreground="{DynamicResource SecondaryBrush}" BorderThickness="0"
-                     FontSize="12" Padding="16,8,16,16"/>
+                     FontSize="12" Padding="16,8,16,16">
+              <TextBox.Resources>
+                <Style TargetType="ScrollBar" BasedOn="{StaticResource StudioVerticalScrollBar}"/>
+              </TextBox.Resources>
+            </TextBox>
           </DockPanel>
         </Border>
       </Grid>
