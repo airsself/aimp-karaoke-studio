@@ -128,7 +128,7 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Grid Width="34" Height="34">
+            <Grid Width="36" Height="36">
               <Ellipse x:Name="Circle" Fill="{TemplateBinding Background}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2"/>
               <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center"/>
             </Grid>
