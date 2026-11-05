@@ -17,6 +17,7 @@ using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Automation;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -585,6 +586,8 @@ public partial class MainWindow : Window
             TranslationButton.Content = _translationEnabled
                 ? (compact ? "RU ✓" : "RU · Закрыть")
                 : (compact ? "RU" : "RU · Перевод");
+            AutomationProperties.SetName(TranslationButton,
+                _translationEnabled ? "Закрыть русский перевод" : "RU · Перевод");
         }
         if (compactFooter != _compactFooter)
         {
@@ -768,6 +771,8 @@ public partial class MainWindow : Window
         TranslationButton.Content = _translationEnabled
             ? (_compactChrome ? "RU ✓" : "RU · Закрыть")
             : (_compactChrome ? "RU" : "RU · Перевод");
+        AutomationProperties.SetName(TranslationButton,
+            _translationEnabled ? "Закрыть русский перевод" : "RU · Перевод");
         TranslationButton.Background = _translationEnabled
             ? DesignBrush("AccentSurfaceBrush") : DesignBrush("ControlBrush");
         TranslationButton.BorderBrush = _translationEnabled
