@@ -23,6 +23,7 @@ $report = [ordered]@{
   demoWindowCreated = $false
   uiAutomationConnectionFound = $false
   bilingualSplitVerified = $false
+  settingsDrawerVerified = $false
   lyricsSearchDialogVerified = $false
   batchActionsRegistered = $false
   embeddedBridgeResponds = $false
@@ -260,6 +261,40 @@ try {
           $image.Save((Join-Path $folder "bilingual-split.png"),[System.Drawing.Imaging.ImageFormat]::Png)
         } finally { $g2.Dispose(); $image.Dispose() }
       }
+    }
+    # Design-system regression: inspect the responsive settings surface with
+    # actual BAML styles. Preserve the previous player/translation state.
+    try {
+      $settingsCondition = [System.Windows.Automation.PropertyCondition]::new(
+        [System.Windows.Automation.AutomationElement]::NameProperty, "Настройки")
+      $settingsToggle = $rootUi.FindFirst(
+        [System.Windows.Automation.TreeScope]::Descendants, $settingsCondition)
+      if ($null -ne $settingsToggle) {
+        $settingsInvoke = $settingsToggle.GetCurrentPattern(
+          [System.Windows.Automation.InvokePattern]::Pattern)
+        $settingsInvoke.Invoke()
+        try {
+          Start-Sleep -Milliseconds 500
+          $titleCondition = [System.Windows.Automation.PropertyCondition]::new(
+            [System.Windows.Automation.AutomationElement]::NameProperty, "Отображение текста")
+          $drawerHeading = $rootUi.FindFirst(
+            [System.Windows.Automation.TreeScope]::Descendants, $titleCondition)
+          $report.settingsDrawerVerified = $null -ne $drawerHeading
+          if ($report.settingsDrawerVerified) {
+            $s = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $shot = [System.Drawing.Bitmap]::new([Math]::Min($s.Width,1920),
+              [Math]::Min($s.Height,1080))
+            $graphics = [System.Drawing.Graphics]::FromImage($shot)
+            try {
+              $graphics.CopyFromScreen($s.X,$s.Y,0,0,$shot.Size)
+              $shot.Save((Join-Path $folder "settings-design-system.png"),
+                [System.Drawing.Imaging.ImageFormat]::Png)
+            } finally { $graphics.Dispose(); $shot.Dispose() }
+          }
+        } finally { $settingsInvoke.Invoke() }
+      }
+    } catch {
+      Write-Warning "Settings drawer visual smoke probe unavailable: $_"
     }
     # Invoke the modal Lyrics Finder from a separate PowerShell process.
     # ButtonAutomationPeer.Invoke can wait for ShowDialog to close.
