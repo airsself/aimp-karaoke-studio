@@ -95,13 +95,13 @@
           <TextBlock x:Name="SearchStatus" Text="Введите название и исполнителя."
                      Style="{StaticResource HelperText}"/>
           <CheckBox x:Name="LegacyBridgeCheck" Content="Проверять локальный Lyrics Bridge"
-                    IsChecked="True" Style="{StaticResource SettingCheck}" Margin="0,5,0,0"/>
+                    IsChecked="True" Style="{StaticResource SettingCheck}" Margin="0,4,0,0"/>
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom" Margin="12,0,0,0">
           <Button Content="Закрыть" Style="{StaticResource OutlineButton}" Margin="0,0,8,0"
                   Click="CloseButton_Click"/>
           <Button x:Name="ApplyButton" Content="Применить" IsEnabled="False"
-                  Style="{StaticResource PrimaryButton}" Margin="0,0,7,0" Click="ApplyButton_Click"/>
+                  Style="{StaticResource PrimaryButton}" Margin="0,0,8,0" Click="ApplyButton_Click"/>
           <Button x:Name="DownloadButton" Content="Сохранить LRC…" IsEnabled="False"
                   Style="{StaticResource OutlineButton}" Click="DownloadButton_Click"/>
         </StackPanel>
