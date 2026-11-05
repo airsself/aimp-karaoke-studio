@@ -39,6 +39,13 @@ public partial class LyricsSearchWindow : Window
         LegacyBridgeCheck.IsChecked = useLegacyBridge;
     }
 
+    private void DialogTitlebar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left) return;
+        try { DragMove(); }
+        catch (InvalidOperationException) { /* Window already closing or resizing. */ }
+    }
+
     private void SearchWindow_Loaded(object sender, RoutedEventArgs e)
     {
         if (_searched) return;
