@@ -179,13 +179,14 @@
                 Background="#B8000000" Visibility="Collapsed"
                 MouseLeftButtonDown="SettingsScrim_MouseLeftButtonDown"/>
         <Border x:Name="SettingsDrawer" Grid.Column="1" Background="{StaticResource DrawerBrush}" Visibility="Collapsed"
+                KeyboardNavigation.TabNavigation="Cycle"
                 BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1,0,0,0">
           <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0">
             <StackPanel Margin="{StaticResource DS.Inset.Drawer}">
               <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                 <TextBlock Text="Отображение текста" Style="{StaticResource PanelTitle}" VerticalAlignment="Center"/>
-                <Button Grid.Column="1" Content="×" Style="{StaticResource ChromeButton}" ToolTip="Скрыть настройки (Esc)" Click="Settings_Click"/>
+                <Button x:Name="SettingsCloseButton" Grid.Column="1" Content="×" Style="{StaticResource ChromeButton}" ToolTip="Скрыть настройки (Esc)" Click="Settings_Click"/>
               </Grid>
               <TextBlock Text="ТИПОГРАФИКА" Style="{StaticResource SectionHeading}"/>
               <DockPanel><TextBlock Text="Размер активной строки" Style="{StaticResource SmallText}"/>
