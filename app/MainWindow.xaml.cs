@@ -917,6 +917,12 @@ public partial class MainWindow : Window
         ApplyResponsiveSettingsLayout();
         SettingsButton.Background = _settingsOpen
             ? DesignBrush("AccentSurfaceBrush") : DesignBrush("ControlBrush");
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+        {
+            if (_closing) return;
+            if (_settingsOpen) SettingsCloseButton.Focus();
+            else if (!_fullscreen) SettingsButton.Focus();
+        }));
         Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() => { UpdateTranslationLayout(); UpdateTargetScroll(); }));
     }
 
