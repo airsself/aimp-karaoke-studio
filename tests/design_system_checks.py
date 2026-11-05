@@ -112,6 +112,11 @@ assert 'AutomationProperties.Name="Найти"' in main
 assert 'AutomationProperties.Name="RU · Перевод"' in main
 assert "AutomationProperties.SetName(TranslationButton" in code
 
+assert 'KeyboardNavigation.TabNavigation="Cycle"' in main
+assert "SettingsCloseButton.Focus()" in code
+assert 'x:Name="ResultsPlaceholder"' in dialog
+assert 'VerticalContentAlignment="Top"' in dialog
+assert "ResultsPlaceholder.Visibility" in (root / "app/LyricsSearchWindow.xaml.cs").read_text(encoding="utf-8")
 assert "SettingsScrim_MouseLeftButtonDown" in code
 assert "UpdateResponsiveChrome()" in code
 assert "DesignMetrics.SettingsWidth" in code
