@@ -22,11 +22,18 @@ internal static class Program
     private static int Main()
     {
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
-        foreach (string key in new[] { "WindowBrush", "StrokeBrush", "TextBrush",
-                     "SecondaryBrush", "DimBrush" })
-            app.Resources[key] = new SolidColorBrush(Colors.Black);
-        app.Resources["OutlineButton"] = new Style(typeof(Button));
-        app.Resources["SettingCheck"] = new Style(typeof(CheckBox));
+        // Exercise the real production design dictionaries, not placeholder
+        // colors/styles: catches broken template resources and runtime XAML errors.
+        app.Resources.MergedDictionaries.Add(new ResourceDictionary {
+            Source = new Uri("pack://application:,,,/Styles/Tokens.xaml", UriKind.Absolute)
+        });
+        app.Resources.MergedDictionaries.Add(new ResourceDictionary {
+            Source = new Uri("pack://application:,,,/Styles/Components.xaml", UriKind.Absolute)
+        });
+        foreach (var key in new[] { "StudioTextBox", "StudioCard",
+            "DiscoveryResultItem", "PrimaryButton", "SettingCheck" })
+            if (app.TryFindResource(key) is not Style)
+                throw new Exception("Missing production design resource: " + key);
         try
         {
             ApplyAfterCompletedSearchAndRetry();

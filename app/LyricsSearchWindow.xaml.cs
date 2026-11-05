@@ -39,6 +39,13 @@ public partial class LyricsSearchWindow : Window
         LegacyBridgeCheck.IsChecked = useLegacyBridge;
     }
 
+    private void DialogTitlebar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left) return;
+        try { DragMove(); }
+        catch (InvalidOperationException) { /* Window already closing or resizing. */ }
+    }
+
     private void SearchWindow_Loaded(object sender, RoutedEventArgs e)
     {
         if (_searched) return;
@@ -76,6 +83,8 @@ public partial class LyricsSearchWindow : Window
         SearchButton.IsEnabled = false;
         SearchStatus.Text = "Ищем по нескольким источникам…";
         ResultsList.ItemsSource = null;
+        ResultsPlaceholder.Text = "Идёт поиск по источникам…";
+        ResultsPlaceholder.Visibility = Visibility.Visible;
         PreviewText.Text = "Получаем результаты…";
         ApplyButton.IsEnabled = false;
         DownloadButton.IsEnabled = false;
@@ -85,6 +94,10 @@ public partial class LyricsSearchWindow : Window
                 LegacyBridgeCheck.IsChecked == true, true, token);
             if (token.IsCancellationRequested || _closed) return;
             ResultsList.ItemsSource = result.Candidates;
+            ResultsPlaceholder.Visibility = result.Candidates.Count > 0
+                ? Visibility.Collapsed : Visibility.Visible;
+            if (result.Candidates.Count == 0)
+                ResultsPlaceholder.Text = "Совпадений нет. Уточните исполнителя или название.";
             SearchStatus.Text = result.Diagnostic;
             if (result.Candidates.Count > 0) ResultsList.SelectedIndex = 0;
             else PreviewText.Text = "Текст не найден. Проверьте исполнителя и название.";
@@ -95,6 +108,8 @@ public partial class LyricsSearchWindow : Window
             if (!_closed && !token.IsCancellationRequested)
             {
                 SearchStatus.Text = "Ошибка поиска: " + error.Message;
+                ResultsPlaceholder.Visibility = Visibility.Visible;
+                ResultsPlaceholder.Text = "Не удалось загрузить варианты текста.";
                 StudioLog.Error("Lyrics lookup", error);
             }
         }

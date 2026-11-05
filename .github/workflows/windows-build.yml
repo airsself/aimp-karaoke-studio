@@ -44,6 +44,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Lyrics discovery tests failed' }
           dotnet run --project tests/LyricsApplyRegressionTests/LyricsApplyRegressionTests.csproj -c Release
           if ($LASTEXITCODE -ne 0) { throw 'Lyrics Apply WPF dialog regression failed' }
+          dotnet run --project tests/DesignSystemWpfTests/DesignSystemWpfTests.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { throw 'WPF design-system component smoke failed' }
           dotnet run --project tests/HighlightPerformanceTests/HighlightPerformanceTests.csproj -c Release
           if ($LASTEXITCODE -ne 0) { throw 'Highlight hot-path benchmark failed' }
           dotnet run --project tests/WpfViewModelTests/WpfViewModelTests.csproj -c Release
@@ -59,6 +61,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Native batch safety guards failed' }
           python tests/source_contract_checks.py
           if ($LASTEXITCODE -ne 0) { throw 'Source contract checks failed' }
+          python tests/design_system_checks.py
+          if ($LASTEXITCODE -ne 0) { throw 'WPF design-system contract checks failed' }
 
       - name: Build and package x64 Windows plugin
         shell: pwsh
@@ -94,3 +98,18 @@ jobs:
           path: dist/AimpKaraokeStudio-x64.aimppack
           if-no-files-found: error
           retention-days: 30
+      
+      - name: Upload reusable design-system kit
+        uses: actions/upload-artifact@v4
+        with:
+          name: AIMP-Karaoke-Design-System-v1
+          path: |
+            app/Styles/Tokens.xaml
+            app/Styles/Components.xaml
+            app/Design/DesignMetrics.cs
+            docs/DESIGN_SYSTEM.md
+            docs/design-system/tokens.json
+            docs/design-system/QA_MATRIX.md
+            tests/design_system_checks.py
+          if-no-files-found: error
+          retention-days: 90

@@ -10,12 +10,14 @@ using Application = System.Windows.Application;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using KaraokeStudio.Models;
 using KaraokeStudio.Services;
+using KaraokeStudio.Design;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Automation;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -71,6 +73,8 @@ public partial class MainWindow : Window
     private bool _synced;
     private bool _fullscreen;
     private bool _settingsOpen;
+    private bool _compactChrome;
+    private bool _compactFooter;
     private bool _settingsBeforeFullscreen;
     private bool _manualOverride;
     private bool _ready;
@@ -150,6 +154,7 @@ public partial class MainWindow : Window
         UpdateSettingsValues();
         ApplyLineStyles();
         UpdateTranslationLayout();
+        UpdateResponsiveChrome();
     }
 
     private static SolidColorBrush Solid(string hex)
@@ -174,6 +179,7 @@ public partial class MainWindow : Window
         _scrollViewer = FindChild<ScrollViewer>(LyricsItems);
         UpdateViewportPadding();
         UpdateTranslationLayout();
+        UpdateResponsiveChrome();
         if (_demo) StartDemo(); else _pipe?.Start();
         // Go server starts as a separate, bounded process, not on the WPF
         // dispatcher thread. It shares only the documented local HTTP contract.
@@ -560,17 +566,51 @@ public partial class MainWindow : Window
         if (_lyricsPanel.Margin != pad) _lyricsPanel.Margin = pad;
     }
 
+    private static Brush DesignBrush(string key) =>
+        Application.Current.TryFindResource(key) as Brush ?? Brushes.Transparent;
+
+    private void UpdateResponsiveChrome()
+    {
+        if (!_ready || _fullscreen) return;
+        bool compact = ActualWidth < DesignMetrics.CompactChromeBreakpoint;
+        bool compactFooter = ActualWidth < DesignMetrics.CompactFooterBreakpoint;
+        if (compact != _compactChrome)
+        {
+            _compactChrome = compact;
+            FocusedLabel.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+            ReadingButton.Content = compact ? "Чт" : "Чтение";
+            KaraokeButton.Content = compact ? "Кар" : "Караоке";
+            StageButton.Content = compact ? "Сц" : "Сцена";
+            SettingsButton.Content = compact ? "⚙" : "⚙  Настройки";
+            FindLyricsButton.Content = compact ? "⌕" : "Найти";
+            TranslationButton.Content = _translationEnabled
+                ? (compact ? "RU ✓" : "RU · Закрыть")
+                : (compact ? "RU" : "RU · Перевод");
+            AutomationProperties.SetName(TranslationButton,
+                _translationEnabled ? "Закрыть русский перевод" : "RU · Перевод");
+        }
+        if (compactFooter != _compactFooter)
+        {
+            _compactFooter = compactFooter;
+            // A± stays available via Ctrl+wheel and hotkeys.
+            FontMinusButton.Visibility = compactFooter ? Visibility.Collapsed : Visibility.Visible;
+            FontPlusButton.Visibility = compactFooter ? Visibility.Collapsed : Visibility.Visible;
+        }
+    }
+
     private void ApplyResponsiveSettingsLayout()
     {
         if (!_ready) return;
-        bool overlay = ActualWidth < 900;
+        bool overlay = ActualWidth < DesignMetrics.OverlayBreakpoint;
+        SettingsScrim.Visibility = _settingsOpen && overlay ? Visibility.Visible : Visibility.Collapsed;
         if (_settingsOpen && overlay)
         {
             SettingsColumn.Width = new GridLength(0);
             Grid.SetColumn(SettingsDrawer, 0);
             Grid.SetColumnSpan(SettingsDrawer, 2);
             SettingsDrawer.HorizontalAlignment = System.Windows.HorizontalAlignment.Right;
-            SettingsDrawer.Width = Math.Min(298, Math.Max(265, ActualWidth - 22));
+            SettingsDrawer.Width = Math.Min(DesignMetrics.SettingsWidth,
+                Math.Max(0, ActualWidth - DesignMetrics.OverlayInset * 2));
             System.Windows.Controls.Panel.SetZIndex(SettingsDrawer, 10);
         }
         else
@@ -579,8 +619,16 @@ public partial class MainWindow : Window
             Grid.SetColumnSpan(SettingsDrawer, 1);
             SettingsDrawer.HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch;
             SettingsDrawer.Width = double.NaN;
-            SettingsColumn.Width = _settingsOpen ? new GridLength(298) : new GridLength(0);
+            SettingsColumn.Width = _settingsOpen
+                ? new GridLength(DesignMetrics.SettingsWidth) : new GridLength(0);
         }
+    }
+
+    private void SettingsScrim_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!_settingsOpen) return;
+        e.Handled = true;
+        ToggleSettings(false);
     }
 
     private void UpdateTargetScroll()
@@ -613,9 +661,9 @@ public partial class MainWindow : Window
         if (!_ready) return;
         foreach (var (button, name) in new[] { (ReadingButton, "Reading"), (KaraokeButton, "Karaoke"), (StageButton, "Stage") })
         {
-            button.Background = _mode == name ? Solid("#3B3151") : Brushes.Transparent;
-            button.Foreground = _mode == name ? Solid("#F0EBFF") : Solid("#AAA5B7");
-            button.BorderBrush = _mode == name ? Solid("#695991") : Brushes.Transparent;
+            button.Background = _mode == name ? DesignBrush("AccentSurfaceBrush") : Brushes.Transparent;
+            button.Foreground = _mode == name ? DesignBrush("TextBrush") : DesignBrush("SecondaryBrush");
+            button.BorderBrush = _mode == name ? DesignBrush("AccentBrush") : Brushes.Transparent;
         }
     }
 
@@ -720,11 +768,15 @@ public partial class MainWindow : Window
         TranslationHeader.Visibility = _translationEnabled ? Visibility.Visible : Visibility.Collapsed;
         TranslationDivider.Visibility = _translationEnabled ? Visibility.Visible : Visibility.Collapsed;
         SyncIndicator.Visibility = _translationEnabled ? Visibility.Collapsed : Visibility.Visible;
-        TranslationButton.Content = _translationEnabled ? "RU · Закрыть" : "RU · Перевод";
+        TranslationButton.Content = _translationEnabled
+            ? (_compactChrome ? "RU ✓" : "RU · Закрыть")
+            : (_compactChrome ? "RU" : "RU · Перевод");
+        AutomationProperties.SetName(TranslationButton,
+            _translationEnabled ? "Закрыть русский перевод" : "RU · Перевод");
         TranslationButton.Background = _translationEnabled
-            ? Solid("#3B3151") : Solid("#1D1B21");
+            ? DesignBrush("AccentSurfaceBrush") : DesignBrush("ControlBrush");
         TranslationButton.BorderBrush = _translationEnabled
-            ? Solid("#7A659C") : Solid("#34313B");
+            ? DesignBrush("AccentBrush") : DesignBrush("StrokeBrush");
         foreach (var line in _lines)
         {
             line.TranslationVisibility = _translationEnabled ? Visibility.Visible : Visibility.Collapsed;
@@ -863,7 +915,14 @@ public partial class MainWindow : Window
         _settingsOpen = show ?? !_settingsOpen;
         SettingsDrawer.Visibility = _settingsOpen ? Visibility.Visible : Visibility.Collapsed;
         ApplyResponsiveSettingsLayout();
-        SettingsButton.Background = _settingsOpen ? Solid("#342B44") : Solid("#1D1B21");
+        SettingsButton.Background = _settingsOpen
+            ? DesignBrush("AccentSurfaceBrush") : DesignBrush("ControlBrush");
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+        {
+            if (_closing) return;
+            if (_settingsOpen) SettingsCloseButton.Focus();
+            else if (!_fullscreen) SettingsButton.Focus();
+        }));
         Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() => { UpdateTranslationLayout(); UpdateTargetScroll(); }));
     }
 
@@ -894,7 +953,9 @@ public partial class MainWindow : Window
         else
         {
             _fullscreen = false;
-            HeaderRow.Height = new GridLength(38); ToolbarRow.Height = new GridLength(62); FooterRow.Height = new GridLength(60);
+            HeaderRow.Height = DesignMetrics.HeaderGridHeight;
+            ToolbarRow.Height = DesignMetrics.ToolbarGridHeight;
+            FooterRow.Height = DesignMetrics.FooterGridHeight;
             WindowState = WindowState.Normal;
             WindowStyle = _restoreStyle;
             ResizeMode = ResizeMode.CanResize;
@@ -1041,6 +1102,7 @@ public partial class MainWindow : Window
     {
         if (!_ready) return;
         ApplyResponsiveSettingsLayout();
+        UpdateResponsiveChrome();
         Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
             { UpdateViewportPadding(); UpdateTranslationLayout(); UpdateTargetScroll(); }));
     }

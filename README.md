@@ -2,6 +2,21 @@
 
 An AIMP 5.40 C++ plugin and a separate WPF 10 Windows lyrics window, styled to match the original AIMP dark UI.
 
+## Design system v1 (WPF)
+
+The app now uses shared WPF design tokens and component templates for the main
+karaoke window, settings and lyrics discovery. The 4-DIP grid, 36-DIP controls,
+40/64/64-DIP chrome, 320-DIP responsive settings drawer, coherent selected/focus
+states and typography are documented in [DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).
+
+The implementation and source-of-truth files:
+[Tokens.xaml](app/Styles/Tokens.xaml),
+[Components.xaml](app/Styles/Components.xaml),
+[DesignMetrics.cs](app/Design/DesignMetrics.cs) and
+[design-system QA checklist](docs/design-system/QA_MATRIX.md).
+CI validates resource resolution, token parity and color contrast; visual QA
+is still required on different Windows display scaling settings.
+
 ## Features
 
 - AIMP SDK `IAIMPServicePlayer` and `IAIMPServiceLyrics` integration, and local `.lrc` fallback.

@@ -6,13 +6,16 @@ import re
 root=Path(__file__).resolve().parents[1]
 xaml=(root/'app/MainWindow.xaml').read_text('utf-8')
 app=(root/'app/App.xaml').read_text('utf-8')
+resources='\n'.join((root/p).read_text('utf-8') for p in
+    ('app/Styles/Tokens.xaml', 'app/Styles/Components.xaml'))
 code=(root/'app/MainWindow.xaml.cs').read_text('utf-8')
 plugin=(root/'plugin/Plugin.cpp').read_text('utf-8')
 dto=(root/'app/Models/PipeMessage.cs').read_text('utf-8')
-for name in ('app/App.xaml','app/MainWindow.xaml','app/KaraokeStudio.csproj'):
+for name in ('app/App.xaml','app/MainWindow.xaml', 'app/Styles/Tokens.xaml',
+             'app/Styles/Components.xaml', 'app/KaraokeStudio.csproj'):
     etree.parse(str(root/name))
 keys=set(re.findall(r'x:Key="([\w-]+)"',app+xaml))
-refs=set(re.findall(r'\{(?:StaticResource|DynamicResource)\s+([^}]+)\}',app+xaml))
+refs=set(re.findall(r'\{(?:StaticResource|DynamicResource)\s+([^}]+)\}',app+xaml+resources))
 assert not (refs-keys), f'Missing XAML resources: {refs-keys}'
 events=set(re.findall(r'\b(?:Click|Loaded|Closing|KeyDown|PreviewMouseWheel|ValueChanged|SizeChanged|MouseLeftButtonDown|MouseLeftButtonUp|PreviewMouseLeftButtonUp)="(\w+)"',xaml))
 assert all(re.search(r'\b'+re.escape(name)+r'\s*\(',code) for name in events)

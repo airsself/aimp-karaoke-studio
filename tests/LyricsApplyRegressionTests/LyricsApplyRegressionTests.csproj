@@ -13,5 +13,7 @@
     <Compile Include="../../app/Services/LyricsSidecarStore.cs" Link="LyricsSidecarStore.cs"/>
     <Compile Include="../../app/Services/StudioLog.cs" Link="StudioLog.cs"/>
     <Page Include="../../app/LyricsSearchWindow.xaml" Link="LyricsSearchWindow.xaml" />
+    <Page Include="../../app/Styles/Tokens.xaml" Link="Styles/Tokens.xaml" />
+    <Page Include="../../app/Styles/Components.xaml" Link="Styles/Components.xaml" />
   </ItemGroup>
 </Project>
