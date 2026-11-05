@@ -98,3 +98,18 @@ jobs:
           path: dist/AimpKaraokeStudio-x64.aimppack
           if-no-files-found: error
           retention-days: 30
+      
+      - name: Upload reusable design-system kit
+        uses: actions/upload-artifact@v4
+        with:
+          name: AIMP-Karaoke-Design-System-v1
+          path: |
+            app/Styles/Tokens.xaml
+            app/Styles/Components.xaml
+            app/Design/DesignMetrics.cs
+            docs/DESIGN_SYSTEM.md
+            docs/design-system/tokens.json
+            docs/design-system/QA_MATRIX.md
+            tests/design_system_checks.py
+          if-no-files-found: error
+          retention-days: 90
