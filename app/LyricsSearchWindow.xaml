@@ -4,93 +4,97 @@
         Title="Поиск текстов · AIMP Karaoke Studio" Width="880" Height="640"
         MinWidth="620" MinHeight="470" WindowStartupLocation="CenterOwner"
         Background="{DynamicResource WindowBrush}" Foreground="{DynamicResource TextBrush}"
-        FontFamily="Segoe UI" FontSize="12"
+        FontFamily="Segoe UI" FontSize="12" SnapsToDevicePixels="True" UseLayoutRounding="True"
         Loaded="SearchWindow_Loaded" Closing="SearchWindow_Closing">
   <Border BorderThickness="1" BorderBrush="{DynamicResource StrokeBrush}">
-    <Grid Margin="18">
+    <Grid Margin="24">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto"/>
         <RowDefinition Height="Auto"/>
         <RowDefinition Height="*"/>
         <RowDefinition Height="Auto"/>
       </Grid.RowDefinitions>
-      <Grid Grid.Row="0" Margin="0,0,0,16">
+      <Grid Grid.Row="0" Margin="0,0,0,20">
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <StackPanel>
-          <TextBlock Text="ПОИСК ТЕКСТОВ" FontWeight="SemiBold" FontSize="17" Foreground="{DynamicResource TextBrush}"/>
-          <TextBlock Text="Legacy Bridge → LRCLIB → lyrics.ovh" FontSize="11" Foreground="{DynamicResource SecondaryBrush}"
+          <TextBlock Text="ПОИСК ТЕКСТОВ" Style="{StaticResource PanelTitle}"/>
+          <TextBlock Text="Legacy Bridge → LRCLIB → lyrics.ovh" Style="{StaticResource HelperText}"
                      Margin="0,4,0,0"/>
         </StackPanel>
-        <TextBlock Grid.Column="1" Text="v3 · Lyrics Discovery" Foreground="{DynamicResource DimBrush}" VerticalAlignment="Center"/>
+        <TextBlock Grid.Column="1" Text="LYRICS DISCOVERY" Style="{StaticResource PanelLabel}" VerticalAlignment="Center"/>
       </Grid>
-      <Grid Grid.Row="1" Margin="0,0,0,14">
+      <Grid Grid.Row="1" Margin="0,0,0,16">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*"/>
-          <ColumnDefinition Width="14"/>
+          <ColumnDefinition Width="16"/>
           <ColumnDefinition Width="*"/>
           <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
         <StackPanel Grid.Column="0">
-          <TextBlock Text="ИСПОЛНИТЕЛЬ" FontSize="10" Foreground="{DynamicResource SecondaryBrush}" Margin="0,0,0,5"/>
-          <TextBox x:Name="ArtistInput" Height="33" Background="#25232B" Foreground="#F0ECF7"
-                   BorderBrush="#49414F" Padding="8,5" KeyDown="SearchField_KeyDown"/>
+          <TextBlock Text="ИСПОЛНИТЕЛЬ" Style="{StaticResource PanelLabel}" Margin="0,0,0,8"/>
+          <TextBox x:Name="ArtistInput" Style="{StaticResource StudioTextBox}"
+                   AutomationProperties.Name="Исполнитель" KeyDown="SearchField_KeyDown"/>
         </StackPanel>
         <StackPanel Grid.Column="2">
-          <TextBlock Text="НАЗВАНИЕ" FontSize="10" Foreground="{DynamicResource SecondaryBrush}" Margin="0,0,0,5"/>
-          <TextBox x:Name="TitleInput" Height="33" Background="#25232B" Foreground="#F0ECF7"
-                   BorderBrush="#49414F" Padding="8,5" KeyDown="SearchField_KeyDown"/>
+          <TextBlock Text="НАЗВАНИЕ" Style="{StaticResource PanelLabel}" Margin="0,0,0,8"/>
+          <TextBox x:Name="TitleInput" Style="{StaticResource StudioTextBox}"
+                   AutomationProperties.Name="Название композиции" KeyDown="SearchField_KeyDown"/>
         </StackPanel>
-        <Button x:Name="SearchButton" Grid.Column="3" Margin="12,14,0,0" Content="Найти" Width="85"
-                Style="{StaticResource OutlineButton}" Click="SearchButton_Click"/>
+        <Button x:Name="SearchButton" Grid.Column="3" Margin="16,0,0,0" Content="Найти" MinWidth="96"
+                VerticalAlignment="Bottom" Style="{StaticResource PrimaryButton}" Click="SearchButton_Click"/>
       </Grid>
       <Grid Grid.Row="2" MinHeight="130">
-        <Grid.ColumnDefinitions><ColumnDefinition Width="3*"/><ColumnDefinition Width="13"/><ColumnDefinition Width="4*"/></Grid.ColumnDefinitions>
-        <Border Grid.Column="0" Background="#15151A" BorderBrush="#35323B" BorderThickness="1" CornerRadius="4">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="5*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="7*"/></Grid.ColumnDefinitions>
+        <Border Grid.Column="0" Style="{StaticResource StudioCard}">
           <DockPanel>
-            <TextBlock DockPanel.Dock="Top" Text="ВАРИАНТЫ ТЕКСТА" Foreground="{DynamicResource SecondaryBrush}"
-                       Padding="12,12,8,10" FontSize="10"/>
+            <TextBlock DockPanel.Dock="Top" Text="ВАРИАНТЫ ТЕКСТА" Style="{StaticResource PanelLabel}"
+                       Padding="16,16,12,12"/>
             <ListBox x:Name="ResultsList" SelectionChanged="ResultsList_SelectionChanged"
-                     Background="Transparent" BorderThickness="0" Foreground="#E9E5F0"
+                     Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextBrush}"
+                     ItemContainerStyle="{StaticResource DiscoveryResultItem}"
+                     AutomationProperties.Name="Найденные варианты текста"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
               <ListBox.ItemTemplate>
                 <DataTemplate>
-                  <Border Padding="10,9" BorderBrush="#24222B" BorderThickness="0,0,0,1">
-                    <StackPanel>
-                      <TextBlock Text="{Binding DisplayTitle}" TextWrapping="Wrap" FontWeight="SemiBold"/>
-                      <TextBlock Text="{Binding DisplayDetail}" TextWrapping="Wrap" Margin="0,5,0,0"
-                                 FontSize="10" Foreground="#A89FBB"/>
-                    </StackPanel>
-                  </Border>
+                  <StackPanel>
+                    <TextBlock Text="{Binding DisplayTitle}" TextWrapping="Wrap"
+                               FontSize="12" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextBrush}"/>
+                    <TextBlock Text="{Binding DisplayDetail}" TextWrapping="Wrap"
+                               Margin="0,8,0,0" FontSize="11"
+                               Foreground="{DynamicResource SecondaryBrush}"/>
+                  </StackPanel>
                 </DataTemplate>
               </ListBox.ItemTemplate>
             </ListBox>
           </DockPanel>
         </Border>
-        <Border Grid.Column="2" Background="#15151A" BorderBrush="#35323B" BorderThickness="1" CornerRadius="4">
+        <Border Grid.Column="2" Style="{StaticResource StudioCard}">
           <DockPanel>
-            <TextBlock DockPanel.Dock="Top" Text="ПРЕДПРОСМОТР" Foreground="{DynamicResource SecondaryBrush}"
-                       Padding="12,12,8,10" FontSize="10"/>
+            <TextBlock DockPanel.Dock="Top" Text="ПРЕДПРОСМОТР" Style="{StaticResource PanelLabel}"
+                       Padding="16,16,12,12"/>
             <TextBox x:Name="PreviewText" Text="Выберите найденный текст."
                      IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                     Background="Transparent" Foreground="#D5CFDE" BorderThickness="0"
-                     FontSize="12" Padding="12,4,14,12"/>
+                     Style="{StaticResource StudioTextBox}" Height="Auto"
+                     Background="Transparent" Foreground="{DynamicResource SecondaryBrush}" BorderThickness="0"
+                     FontSize="12" Padding="16,8,16,16"/>
           </DockPanel>
         </Border>
       </Grid>
-      <Grid Grid.Row="3" Margin="0,13,0,0">
+      <Grid Grid.Row="3" Margin="0,16,0,0">
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <StackPanel Grid.Column="0" VerticalAlignment="Center">
           <TextBlock x:Name="SearchStatus" Text="Введите название и исполнителя."
-                     Foreground="{DynamicResource SecondaryBrush}" FontSize="11" TextWrapping="Wrap"/>
-          <CheckBox x:Name="LegacyBridgeCheck" Content="Использовать мой старый Lyrics Bridge, если запущен"
+                     Style="{StaticResource HelperText}"/>
+          <CheckBox x:Name="LegacyBridgeCheck" Content="Проверять локальный Lyrics Bridge"
                     IsChecked="True" Style="{StaticResource SettingCheck}" Margin="0,5,0,0"/>
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom" Margin="12,0,0,0">
-          <Button Content="Закрыть" Style="{StaticResource OutlineButton}" Margin="0,0,7,0"
+          <Button Content="Закрыть" Style="{StaticResource OutlineButton}" Margin="0,0,8,0"
                   Click="CloseButton_Click"/>
           <Button x:Name="ApplyButton" Content="Применить" IsEnabled="False"
-                  Style="{StaticResource OutlineButton}" Margin="0,0,7,0" Click="ApplyButton_Click"/>
+                  Style="{StaticResource PrimaryButton}" Margin="0,0,7,0" Click="ApplyButton_Click"/>
           <Button x:Name="DownloadButton" Content="Сохранить LRC…" IsEnabled="False"
                   Style="{StaticResource OutlineButton}" Click="DownloadButton_Click"/>
         </StackPanel>
