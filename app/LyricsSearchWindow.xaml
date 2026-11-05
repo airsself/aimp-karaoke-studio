@@ -49,6 +49,7 @@
           <DockPanel>
             <TextBlock DockPanel.Dock="Top" Text="ВАРИАНТЫ ТЕКСТА" Style="{StaticResource PanelLabel}"
                        Padding="16,16,12,12"/>
+            <Grid>
             <ListBox x:Name="ResultsList" SelectionChanged="ResultsList_SelectionChanged"
                      Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextBrush}"
                      ItemContainerStyle="{StaticResource DiscoveryResultItem}"
@@ -67,6 +68,12 @@
                 </DataTemplate>
               </ListBox.ItemTemplate>
             </ListBox>
+              <TextBlock x:Name="ResultsPlaceholder" IsHitTestVisible="False"
+                         Text="Варианты появятся после поиска" TextWrapping="Wrap"
+                         TextAlignment="Center" MaxWidth="240" Margin="18"
+                         Foreground="{DynamicResource DimBrush}" FontSize="12"
+                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Grid>
           </DockPanel>
         </Border>
         <Border Grid.Column="2" Style="{StaticResource StudioCard}">
@@ -76,7 +83,7 @@
             <TextBox x:Name="PreviewText" Text="Выберите найденный текст."
                      IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                     Style="{StaticResource StudioTextBox}" Height="Auto"
+                     Style="{StaticResource StudioTextBox}" Height="Auto" VerticalContentAlignment="Top"
                      Background="Transparent" Foreground="{DynamicResource SecondaryBrush}" BorderThickness="0"
                      FontSize="12" Padding="16,8,16,16"/>
           </DockPanel>
