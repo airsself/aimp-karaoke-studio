@@ -59,6 +59,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Native batch safety guards failed' }
           python tests/source_contract_checks.py
           if ($LASTEXITCODE -ne 0) { throw 'Source contract checks failed' }
+          python tests/design_system_checks.py
+          if ($LASTEXITCODE -ne 0) { throw 'WPF design-system contract checks failed' }
 
       - name: Build and package x64 Windows plugin
         shell: pwsh
