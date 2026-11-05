@@ -68,6 +68,12 @@ internal static class Program
                 "ComboBox selected text");
             Check(check.Template.FindName("CheckMark", check) is TextBlock mark &&
                 mark.Visibility == Visibility.Visible, "Checked mark");
+            var scrollStyle = (Style)app.FindResource("StudioVerticalScrollBar");
+            var scroll = new ScrollBar { Orientation = Orientation.Vertical,
+                Minimum = 0, Maximum = 100, ViewportSize = 15, Value = 5, Style = scrollStyle };
+            scroll.ApplyTemplate();
+            Check(scroll.Template.FindName("PART_Track", scroll) is Track,
+                "Vertical scrollbar track");
             Check(button.MinHeight >= 32, "Button touch geometry");
             Check(results.SelectedIndex == 0 && results.ItemContainerStyle is not null,
                 "Search selection styling");
