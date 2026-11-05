@@ -130,7 +130,40 @@ try
         Check(cancelledHandler.LibreCalls == 0 && cancelledHandler.MyMemoryCalls == 0,
             "Cancellation does not start fallback request");
     }
-    Console.WriteLine("Translation/cache tests and provider routing regressions passed");
+    // Six official endpoints: response shape, authentication and no-billing auto policy.
+    var newProviderFixtures = new[] { "azure", "google", "gemini", "groq", "openrouter", "cloudflare" };
+    foreach (var provider in newProviderFixtures)
+    {
+        var client = new SixProviderMock();
+        var options = new TranslationProviderOptions(provider) {
+            AzureTranslatorKey = "azure-test", AzureTranslatorRegion = "eastus",
+            GoogleCloudApiKey = "google-test", GeminiApiKey = "gemini-test",
+            GroqApiKey = "groq-test", OpenRouterApiKey = "router-test",
+            CloudflareApiToken = "cf-test",
+            CloudflareAccountId = "0123456789abcdef0123456789abcdef"
+        };
+        var local = new TranslationService(new HttpClient(client), temp + "." + provider);
+        var result = new Dictionary<int,string>();
+        await local.TranslateLinesAsync(["We are here"], "en", 0,
+            (i,v,cached) => result[i] = v, (_,_) => { }, CancellationToken.None, options);
+        Check(result[0] == "RU:ok" && client.Calls == 1, "Adapter " + provider + " response and single request");
+        Check(client.LastEndpoint == provider && client.Authenticated,
+            "Adapter " + provider + " endpoint and credential scheme");
+    }
+    var noBilling = new SixProviderMock { FailGemini = true };
+    var freeOptions = new TranslationProviderOptions("auto") {
+        AzureTranslatorKey = "azure-test", GoogleCloudApiKey = "google-test",
+        GeminiApiKey = "gemini-test"
+    };
+    var freeResult = new Dictionary<int, string>();
+    await new TranslationService(new HttpClient(noBilling), temp + ".free-only")
+        .TranslateLinesAsync(["Safe fallback"], "en", 0, (i,v,c)=>freeResult[i]=v,
+            (_,_) => { }, CancellationToken.None, freeOptions);
+    Check(noBilling.Calls == 2 && noBilling.AzureCalls == 0 && noBilling.GoogleCalls == 0
+        && freeResult[0].StartsWith("MM:"),
+        "Auto fallbacks skip billing-enabled services");
+
+    Console.WriteLine("Translation/cache tests and six provider API regressions passed");
 
 }
 finally {
@@ -196,4 +229,70 @@ sealed class ProviderFakeHandler : HttpMessageHandler
         new(HttpStatusCode.OK) {
             Content = new StringContent(JsonSerializer.Serialize(value), Encoding.UTF8, "application/json")
         };
+}
+
+sealed class SixProviderMock : HttpMessageHandler
+{
+    public int Calls, AzureCalls, GoogleCalls;
+    public string LastEndpoint = "";
+    public bool Authenticated;
+    public bool FailGemini;
+
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        Calls++;
+        var uri = request.RequestUri!;
+        object body;
+        if (uri.Host == "api.cognitive.microsofttranslator.com")
+        {
+            LastEndpoint = "azure"; AzureCalls++;
+            Authenticated = request.Headers.Contains("Ocp-Apim-Subscription-Key") &&
+                request.Headers.Contains("Ocp-Apim-Subscription-Region");
+            body = new[] { new { translations = new[] { new { text = "RU:ok" } } } };
+        }
+        else if (uri.Host == "translation.googleapis.com")
+        {
+            LastEndpoint = "google"; GoogleCalls++;
+            Authenticated = request.Headers.Contains("X-goog-api-key");
+            body = new { data = new { translations = new[] { new { translatedText = "RU:ok" } } } };
+        }
+        else if (uri.Host == "generativelanguage.googleapis.com")
+        {
+            LastEndpoint = "gemini";
+            Authenticated = request.Headers.Contains("x-goog-api-key");
+            if (FailGemini)
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.TooManyRequests));
+            body = new { candidates = new[] { new { content = new {
+                parts = new[] { new { text = "RU:ok" } } } } } };
+        }
+        else if (uri.Host == "api.groq.com")
+        {
+            LastEndpoint = "groq";
+            Authenticated = request.Headers.Authorization?.Scheme == "Bearer";
+            body = new { choices = new[] { new { message = new { content = "RU:ok" } } } };
+        }
+        else if (uri.Host == "openrouter.ai")
+        {
+            LastEndpoint = "openrouter";
+            Authenticated = request.Headers.Authorization?.Scheme == "Bearer";
+            body = new { choices = new[] { new { message = new { content = "RU:ok" } } } };
+        }
+        else if (uri.Host == "api.cloudflare.com")
+        {
+            LastEndpoint = "cloudflare";
+            Authenticated = request.Headers.Authorization?.Scheme == "Bearer" &&
+                uri.AbsolutePath.Contains("0123456789abcdef0123456789abcdef");
+            body = new { choices = new[] { new { message = new { content = "RU:ok" } } } };
+        }
+        else
+        {
+            LastEndpoint = "mymemory";
+            Authenticated = true;
+            body = new { responseStatus = 200, responseData = new { translatedText = "MM:ok" } };
+        }
+        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) {
+            Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json")
+        });
+    }
 }

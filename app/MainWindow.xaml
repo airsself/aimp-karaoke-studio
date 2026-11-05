@@ -253,6 +253,12 @@
                 <ComboBoxItem Content="MyMemory · без ключа" Tag="mymemory"/>
                 <ComboBoxItem Content="LibreTranslate · свой сервер" Tag="libre"/>
                 <ComboBoxItem Content="DeepL · API ключ" Tag="deepl"/>
+                <ComboBoxItem Content="Azure Translator · F0, ключ" Tag="azure"/>
+                <ComboBoxItem Content="Google Cloud · квота, биллинг" Tag="google"/>
+                <ComboBoxItem Content="Gemini · Free Tier, ключ" Tag="gemini"/>
+                <ComboBoxItem Content="Groq · Free Plan, ключ" Tag="groq"/>
+                <ComboBoxItem Content="OpenRouter · Free модели, ключ" Tag="openrouter"/>
+                <ComboBoxItem Content="Cloudflare AI · Free Tier, ключ" Tag="cloudflare"/>
               </ComboBox>
               <TextBlock Text="LibreTranslate · адрес HTTPS сервера" Style="{StaticResource SmallText}" Margin="0,10,0,5"/>
               <TextBox x:Name="LibreTranslateUrlInput" Height="29" Padding="5,4"
@@ -261,7 +267,7 @@
                        ToolTip="Например https://translate.example.org или http://localhost:5000"/>
               <Button Content="↻  Повторить перевод" Style="{StaticResource OutlineButton}"
                       Margin="0,10,0,0" HorizontalAlignment="Stretch" Click="TranslationRetry_Click"/>
-              <TextBlock Text="Текст отправляется выбранному провайдеру только при включении перевода. Авто: LibreTranslate (если задан URL) → DeepL (если задан ключ) → MyMemory. Ключи: переменные среды LIBRETRANSLATE_API_KEY и DEEPL_AUTH_KEY. Для новых переменных перезапустите приложение. Переводы кешируются локально."
+              <TextBlock Text="Текст отправляется выбранному провайдеру только при включении перевода. Авто: LibreTranslate → DeepL → Gemini → Groq → Cloudflare → OpenRouter → MyMemory (только настроенные). Azure и Google Cloud с биллингом — только вручную. API-ключи только через переменные среды; см. docs/TRANSLATION_PROVIDERS.md. Для новых переменных перезапустите приложение. Переводы кешируются локально."
                          Foreground="#9692A1" FontSize="10" TextWrapping="Wrap" Margin="0,9,0,0"/>
               <TextBlock Text="КЛАВИШИ" Style="{StaticResource SectionHeading}"/>
               <Grid>
